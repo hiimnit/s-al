@@ -48,6 +48,24 @@ page 81001 "FS S/AL"
                     Lexer.ShowLexemes();
                 end;
             }
+            action(Compile)
+            {
+                Caption = 'Compile';
+                ApplicationArea = All;
+                ToolTip = 'Analyzes and compiles the code.';
+                Image = CompleteLine;
+                Promoted = true;
+                PromotedCategory = Process;
+                PromotedOnly = true;
+
+                trigger OnAction()
+                var
+                    Compiler: Codeunit "FS Compiler";
+                begin
+                    Compiler.Compile(Code);
+                    Compiler.ShowNodeTree();
+                end;
+            }
         }
     }
 

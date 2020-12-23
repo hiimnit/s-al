@@ -6,11 +6,26 @@ codeunit 81002 "FS Compiler"
 
     procedure Compile(Code: Text)
     begin
-        Clear(Lexer);
-        Lexer.Analyze(Code);
+        Analyze(Code);
 
+        CompileScript();
+    end;
+
+    procedure ShowNodeTree()
+    begin
+        NodeTree.ShowNodeTree();
+    end;
+
+    local procedure CompileScript()
+    begin
         // TODO temporary
         CompileCompoundStatement();
+    end;
+
+    local procedure Analyze(Code: Text)
+    begin
+        Clear(Lexer);
+        Lexer.Analyze(Code);
     end;
 
     local procedure CompileCompoundStatement()
@@ -53,7 +68,7 @@ codeunit 81002 "FS Compiler"
 
         AssertNextLexeme("FS Operator"::":=");
 
-        Assignment := NodeTree.InsertAssignment(CompoundStatement, Variable); // TODO add expression entry no. ?
+        Assignment := NodeTree.InsertAssignment(CompoundStatement, Variable); // TODO add expression entry no.?
         // TODO also add variablenode ?
 
         CompileExpression(Assignment);
@@ -72,6 +87,7 @@ codeunit 81002 "FS Compiler"
                     AssertNextLexeme("FS Operator"::"+");
                     // TODO change Factor order/parent
                     Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"+");
+                    NodeTree.UpdateParent(Product, Expression);
                     CompileExpression(Expression);
                 end;
             PeekNextLexeme("FS Operator"::"-"):
@@ -79,11 +95,16 @@ codeunit 81002 "FS Compiler"
                     AssertNextLexeme("FS Operator"::"-");
                     // TODO change Factor order/parent
                     Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"-");
+                    NodeTree.UpdateParent(Product, Expression);
                     CompileExpression(Expression);
                 end;
+            // TODO add "and" and "or" and "xor" ?
             else
                 Expression := Product;
         end;
+
+        // TODO update indentation ?
+        NodeTree.UpdateOrderAndIndentation(Expression);
     end;
 
     local procedure CompileProduct(ParentNode: Integer) Product: Integer
@@ -99,14 +120,16 @@ codeunit 81002 "FS Compiler"
                     AssertNextLexeme("FS Operator"::"*");
                     // TODO change Factor order/parent
                     Product := NodeTree.InsertOperation(ParentNode, "FS Operator"::"*");
-                    CompileExpression(Product);
+                    NodeTree.UpdateParent(Factor, Product);
+                    CompileProduct(Product);
                 end;
             PeekNextLexeme("FS Operator"::"/"):
                 begin
                     AssertNextLexeme("FS Operator"::"/");
                     // TODO change Factor order/parent
                     Product := NodeTree.InsertOperation(ParentNode, "FS Operator"::"/");
-                    CompileExpression(Product);
+                    NodeTree.UpdateParent(Factor, Product);
+                    CompileProduct(Product);
                 end;
             else
                 Product := Factor;
@@ -131,7 +154,7 @@ codeunit 81002 "FS Compiler"
             PeekNextLexeme("FS Lexeme Type"::Decimal):
                 CompileValue(ParentNode);
             PeekNextLexeme("FS Lexeme Type"::Symbol):
-                CompileVariable(ParentNode);
+                CompileSymbol(ParentNode);
             else
                 Error('TODO'); // TODO error message
         end;
@@ -165,13 +188,22 @@ codeunit 81002 "FS Compiler"
         Value := NodeTree.InsertNumericValue(ParentNode, Lexeme."Number Value");
     end;
 
-    local procedure CompileVariable(ParentNode: Integer) Variable: Integer
+    local procedure CompileSymbol(ParentNode: Integer) Symbol: Integer
     var
         Lexeme: Record "FS Lexeme";
     begin
         Lexer.GetNextLexeme(Lexeme);
         // TODO checks ?
-        Variable := NodeTree.InsertVariable(ParentNode, Lexeme.Name);
+        // TODO records/codeunits / functions ?
+
+        case true of
+            PeekNextLexeme("FS Operator"::"."):
+                ; // Record/codeunit ?
+            PeekNextLexeme("FS Operator"::"("):
+                ; // function call ? // TODO can also be written without parenthesis?
+            else
+                Symbol := NodeTree.InsertVariable(ParentNode, Lexeme.Name);
+        end;
     end;
 
     local procedure PeekNextLexeme(LexemeType: Enum "FS Lexeme Type"): Boolean

@@ -31,6 +31,8 @@ table 81001 "FS Node"
         {
             Caption = 'Numeric Value';
             DataClassification = SystemMetadata;
+            BlankZero = true;
+            DecimalPlaces = 0 : 50;
         }
         field(102; "Variable Name"; Text[100])
         {
@@ -56,6 +58,7 @@ table 81001 "FS Node"
         {
             Clustered = true;
         }
+        key(PresentationOrder; Order) { }
     }
 
     trigger OnInsert()
