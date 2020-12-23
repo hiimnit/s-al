@@ -1,0 +1,29 @@
+{
+  "id": "039d5016-64df-48da-9dc8-812e487323dd",
+  "name": "S/AL",
+  "publisher": "FS",
+  "brief": "FS",
+  "description": "FS",
+  "version": "1.0.0.0",
+  "privacyStatement": "https://www.artex-is.cz/dynamics/privacy",
+  "EULA": "https://www.artex-is.cz/dynamics/eula",
+  "help": "https://www.artex-is.cz/dynamics/help",
+  "contextSensitiveHelpUrl": "https://www.artex-is.cz/dynamics/help/XXXXX",
+  "url": "http://www.artex-is.cz",
+  "logo": "./res/ArtexLogo.png",
+  "dependencies": [],
+  "screenshots": [],
+  "platform": "16.0.0.0",
+  "idRanges": [
+    {
+      "from": 81000,
+      "to": 81999
+    }
+  ],
+  "target": "OnPrem",
+  "features": [
+    "TranslationFile"
+  ],
+  "showMyCode": true,
+  "runtime": "5.0"
+}

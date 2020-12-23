@@ -1,0 +1,26 @@
+{
+    "name": "ART",
+    "description": "Custom ruleset",
+    "rules": [
+        {
+            "id": "AS0053",
+            "action": "None",
+            "justification": "Do not check extension target level."
+        },
+        {
+            "id": "AA0214",
+            "action": "Hidden",
+            "justification": "Currently bugged"
+        },
+        {
+            "id": "AS0084",
+            "action": "Hidden",
+            "justification": "AppSource only id range check."
+        },
+        {
+            "id": "AA0072",
+            "action": "Hidden",
+            "justification": "Affix check disabled"
+        }
+    ]
+}

@@ -1,0 +1,39 @@
+
+
+
+
+program = declarationList + main
+declarationList = declaration + declarationList 
+declaration = varList | funDeclaration
+
+------------------------------------------------------------------------------------
+
+varList = "" | var | var + varList2
+varList2 = varDeclaration + varList2 | varDeclaration
+varDeclaration = symbol + ":" + varType + ";"
+
+------------------------------------------------------------------------------------
+
+funDeclaration = "local" + function | function
+
+function = "procedure" + "(" + paramList + ")" + returnValue + varList + compoundStatement
+paramList = "" | varDeclaration | varDeclaration + ";" + paramList 
+returnValue = "" | returnValueName + ":" + varType
+TODO varType
+
+------------------------------------------------------------------------------------
+
+main = "trigger" + "OnRun" + "(" + ")" + varList + compoundStatement
+
+------------------------------------------------------------------------------------
+
+compoundStatement = "begin" + statementList + "end;"
+statementList = statement + statementList | statement | ""
+statement = expressionStatement | ifStatement | iterationStatement | exitStatement | breakStatement
+
+expressionStatement = expression + ";" | ";"
+
+// TODO - if - compoundStatement or single statement
+ifStatement = "if" + expression + "then" + compoundStatement | "if" + expression + "then" + compoundStatement + "else" + compoundStatement 
+
+
