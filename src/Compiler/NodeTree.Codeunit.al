@@ -2,13 +2,14 @@ codeunit 81003 "FS Node Tree"
 {
     var
         TempNode: Record "FS Node" temporary;
+        TempVariable: Record "FS Variable" temporary;
         Order: Integer;
 
     procedure ShowNodeTree()
     var
         NodeTreeView: page "FS Node Tree View";
     begin
-        NodeTreeView.SetRecords(TempNode);
+        NodeTreeView.SetRecords(TempNode, TempVariable);
         NodeTreeView.Run();
     end;
 
@@ -19,11 +20,6 @@ codeunit 81003 "FS Node Tree"
         TempNode.Init();
         TempNode."Entry No." := 0;
         TempNode."Parent Entry No." := ParentNode;
-    end;
-
-    procedure InsertCompoundStatement(): Integer
-    begin
-        exit(InsertCompoundStatement(0)); // TODO change to 1?
     end;
 
     procedure InsertCompoundStatement(ParentNode: Integer): Integer
@@ -37,7 +33,7 @@ codeunit 81003 "FS Node Tree"
     procedure InsertAssignment
     (
         ParentNode: Integer;
-        Name: Text[100]
+        Name: Text[250]
     ): Integer
     begin
         InitTempNode(ParentNode);
@@ -82,6 +78,32 @@ codeunit 81003 "FS Node Tree"
         InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::NumericValue;
         TempNode."Numeric Value" := Value;
+
+        exit(InsertTempNode());
+    end;
+
+    procedure InsertBooleanValue
+    (
+        ParentNode: Integer;
+        Value: Boolean
+    ): Integer
+    begin
+        InitTempNode(ParentNode);
+        TempNode.Type := "FS Node Type"::BooleanValue;
+        TempNode."Boolean Value" := Value;
+
+        exit(InsertTempNode());
+    end;
+
+    procedure InsertTextValue
+    (
+        ParentNode: Integer;
+        Value: Text
+    ): Integer
+    begin
+        InitTempNode(ParentNode);
+        TempNode.Type := "FS Node Type"::BooleanValue;
+        TempNode.SetTextValue(Value);
 
         exit(InsertTempNode());
     end;
@@ -147,5 +169,53 @@ codeunit 81003 "FS Node Tree"
             repeat
                 UpdateOrderAndIndentation(TempChildNode, Order, Indentation + 1);
             until TempChildNode.Next() = 0;
+    end;
+
+    procedure InsertLocalVariable
+    (
+        Name: Text[250];
+        Type: Enum "FS Variable Type";
+        ParentNode: Integer // TODO rename
+    )
+    begin
+        InsertLocalVariable(Name, Type, ParentNode, 0);
+    end;
+
+    procedure InsertLocalVariable
+    (
+        Name: Text[250];
+        Type: Enum "FS Variable Type";
+        ParentNode: Integer; // TODO rename
+        Length: Integer
+    )
+    begin
+        TempVariable.Init();
+        TempVariable.Name := Name;
+        TempVariable.Type := Type;
+        TempVariable."Parent Node No." := ParentNode;
+        TempVariable.Length := Length;
+        TempVariable.Scope := TempVariable.Scope::Local;
+        TempVariable.Insert(true);
+    end;
+
+    procedure ValidateVariable
+    (
+        Name: Text[250];
+        ParentNode: Integer // TODO rename
+    ) VariableType: Enum "FS Variable Type"
+    var
+        TempVariableCopy: Record "FS Variable" temporary;
+    begin
+        TempVariableCopy.Copy(TempVariable, true);
+
+        TempVariableCopy.SetRange(Name, Name);
+        TempVariableCopy.SetRange(Scope, TempVariableCopy.Scope::Local);
+        if not TempVariableCopy.FindFirst() then begin
+            TempVariableCopy.SetRange(Scope, TempVariableCopy.Scope::Global);
+            if not TempVariableCopy.FindFirst() then
+                Error('Unknown variable %1.', Name);
+        end;
+
+        VariableType := TempVariableCopy.Type;
     end;
 }

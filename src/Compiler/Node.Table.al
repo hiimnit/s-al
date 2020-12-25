@@ -34,7 +34,22 @@ table 81001 "FS Node"
             BlankZero = true;
             DecimalPlaces = 0 : 50;
         }
-        field(102; "Variable Name"; Text[100])
+        field(102; "Boolean Value"; Boolean)
+        {
+            Caption = 'Boolean Value';
+            DataClassification = SystemMetadata;
+        }
+        field(103; "Text Value"; Text[250])
+        {
+            Caption = 'Text Value';
+            DataClassification = SystemMetadata;
+        }
+        field(104; "Text Blob"; Blob)
+        {
+            Caption = 'Text Blob';
+            DataClassification = SystemMetadata;
+        }
+        field(105; "Variable Name"; Text[250])
         {
             Caption = 'Variable Name';
             DataClassification = SystemMetadata;
@@ -69,7 +84,6 @@ table 81001 "FS Node"
         if Rec."Entry No." = 0 then
             if Rec.IsTemporary() then begin
                 TempNode.Copy(Rec, true);
-                // TempNode.Reset();
                 AssignEntryNo(TempNode);
             end else
                 AssignEntryNo(Node);
@@ -80,5 +94,43 @@ table 81001 "FS Node"
         if not Node.FindLast() then
             Node.Init();
         Rec."Entry No." := Node."Entry No." + 1;
+    end;
+
+    procedure SetTextValue(Value: Text)
+    var
+        OutStream: OutStream;
+    begin
+        Rec."Text Value" := '';
+        Clear(Rec."Text Blob");
+        if Value = '' then
+            exit;
+
+        if StrLen(Value) <= MaxStrLen(Rec."Text Value") then
+            Rec."Text Value" := Value
+        else begin
+            "Text Blob".CreateOutStream(OutStream);
+            OutStream.WriteText(Value);
+        end;
+    end;
+
+    procedure GetTextValue() Value: Text
+    var
+        InStream: InStream;
+        Line: Text;
+        CRLF: Text[2];
+    begin
+        if Rec."Text Value" <> '' then
+            Value := Rec."Text Value"
+        else begin
+            CRLF[1] := 13;
+            CRLF[2] := 10;
+
+            "Text Blob".CreateInStream(InStream);
+            InStream.ReadText(Value);
+            while not InStream.EOS() do begin
+                InStream.ReadText(Line);
+                Value += CRLF + Line;
+            end;
+        end;
     end;
 }

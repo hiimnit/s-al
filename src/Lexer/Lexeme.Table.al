@@ -117,7 +117,7 @@ table 81000 "FS Lexeme"
         CRLF: Text[2];
     begin
         if Rec."Text Value" <> '' then
-            Value := rEc."Text Value"
+            Value := Rec."Text Value"
         else begin
             CRLF[1] := 13;
             CRLF[2] := 10;

@@ -25,15 +25,23 @@ enum 81003 "FS Node Type"
     {
         Caption = 'Numeric Value';
     }
-    value(302; Variable)
+    value(302; BooleanValue)
+    {
+        Caption = 'Boolean Value';
+    }
+    value(303; TextValue)
+    {
+        Caption = 'Text Value';
+    }
+    value(304; Variable)
     {
         Caption = 'Variable';
     }
-    value(303; UnaryOperator)
+    value(305; UnaryOperator)
     {
         Caption = 'Unary Operator';
     }
-    value(304; Operation)
+    value(306; Operation)
     {
         Caption = 'Operation';
     }

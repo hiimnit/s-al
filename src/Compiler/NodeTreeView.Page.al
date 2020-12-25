@@ -51,9 +51,24 @@ page 81002 "FS Node Tree View"
                 }
             }
         }
+        area(FactBoxes)
+        {
+            part(LocalVariables; "FS Variables")
+            {
+                Caption = 'Local Variables';
+                ApplicationArea = All;
+                // TODO filter!
+            }
+            part(GlobalVariables; "FS Variables")
+            {
+                Caption = 'Global Variables';
+                ApplicationArea = All;
+                // TODO filter!
+            }
+        }
     }
 
-    procedure SetRecords(var Node: Record "FS Node" temporary)
+    procedure SetRecords(var Node: Record "FS Node" temporary; var Variable: Record "FS Variable" temporary)
     begin
         Rec.Reset();
         Rec.DeleteAll();
@@ -66,5 +81,11 @@ page 81002 "FS Node Tree View"
 
             Rec.FindFirst();
         end;
+
+        Variable.SetRange(Scope, Variable.Scope::Local);
+        CurrPage.LocalVariables.Page.SetRecords(Variable);
+
+        Variable.SetRange(Scope, Variable.Scope::Global);
+        CurrPage.GlobalVariables.Page.SetRecords(Variable);
     end;
 }

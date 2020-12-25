@@ -25,8 +25,8 @@ codeunit 81002 "FS Compiler"
         AssertNextLexeme("FS Operator"::")");
 
         if PeekNextLexeme("FS Keyword"::"var") then
-            CompileVariableDefinitionList();
-        CompileCompoundStatement();
+            CompileVariableDefinitionList(0); // XXX 0 = main
+        CompileCompoundStatement(0); // XXX 0 = main
     end;
 
     local procedure Analyze(Code: Text)
@@ -35,35 +35,69 @@ codeunit 81002 "FS Compiler"
         Lexer.Analyze(Code);
     end;
 
-    local procedure CompileVariableDefinitionList()
+    local procedure CompileVariableDefinitionList(ParentNode: Integer)
     begin
         AssertNextLexeme("FS Keyword"::"var");
 
         while PeekNextLexeme("FS Lexeme Type"::"Symbol") do
-            CompileVariableDefinition();
+            CompileVariableDefinition(ParentNode);
     end;
 
-    local procedure CompileVariableDefinition()
+    local procedure CompileVariableDefinition(ParentNode: Integer)
     var
         Lexeme: Record "FS Lexeme";
+        Name: Text[250];
+        Type: Enum "FS Variable Type";
+        Length: Integer;
+        i: Integer;
     begin
         // TODO insert variable definition = new table ?
         Lexer.GetNextLexeme(Lexeme);
+        AssertLexeme(Lexeme, "FS Lexeme Type"::Symbol);
+
+        Name := Lexeme.Name;
 
         AssertNextLexeme("FS Operator"::":");
 
         // TODO compile type
         Lexer.GetNextLexeme(Lexeme);
+        AssertLexeme(Lexeme, "FS Lexeme Type"::Keyword);
+
+        i := "FS Variable Type".Names().IndexOf(Lexeme.Name.ToLower());
+        if i = 0 then
+            Error('Unexpected value %1, expected variable type %2', Lexeme.Name, "FS Variable Type".Names());
+
+        Type := "FS Variable Type".FromInteger("FS Variable Type".Ordinals().Get(i));
+
+        case true of
+            (Type = "FS Variable Type"::text) and PeekNextLexeme("FS Operator"::"["),
+            Type = "FS Variable Type"::code:
+                begin
+                    AssertNextLexeme("FS Operator"::"[");
+                    Lexer.GetNextLexeme(Lexeme);
+                    AssertLexeme(Lexeme, "FS Lexeme Type"::Integer);
+
+                    Length := Lexeme."Number Value";
+
+                    AssertNextLexeme("FS Operator"::"]");
+                end;
+        end;
+
+        NodeTree.InsertLocalVariable(
+            Name,
+            Type,
+            ParentNode,
+            Length);
 
         AssertNextLexeme("FS Operator"::";");
     end;
 
-    local procedure CompileCompoundStatement()
+    local procedure CompileCompoundStatement(ParentNode: Integer)
     var
         CompoundStatement: Integer;
     begin
         AssertNextLexeme("FS Keyword"::"begin");
-        CompoundStatement := NodeTree.InsertCompoundStatement();
+        CompoundStatement := NodeTree.InsertCompoundStatement(ParentNode);
         CompileStatment(CompoundStatement);
 
         while PeekNextLexeme("FS Operator"::";") do begin
@@ -98,22 +132,43 @@ codeunit 81002 "FS Compiler"
     begin
     end;
 
+    local procedure CompileForStatement(CompoundStatement: Integer)
+    begin
+        AssertNextLexeme("FS Keyword"::"for");
+        // TODO compile assignment
+        // TODO keyword "to / downto"
+        // TODO compile expression
+        AssertNextLexeme("FS Keyword"::"do");
+
+        CompileCompoundStatement(CompoundStatement);
+    end;
+
     local procedure CompileAssignmentStatement(CompoundStatement: Integer)
     var
         Lexeme: Record "FS Lexeme";
-        Variable: Text[100];
+        Variable: Text[250];
         Assignment: Integer;
+        VariableType: Enum "FS Variable Type";
     begin
         Lexer.GetNextLexeme(Lexeme);
         Variable := Lexeme.Name;
         // TODO check variable declaration 
 
+        VariableType := NodeTree.ValidateVariable(Variable, 0); // FIXME 0 = main
+
         AssertNextLexeme("FS Operator"::":=");
 
         Assignment := NodeTree.InsertAssignment(CompoundStatement, Variable); // TODO add expression entry no.?
-        // TODO also add variablenode ?
 
-        CompileExpression(Assignment);
+        case VariableType of
+            "FS Variable Type"::boolean:
+                CompileBooleanExpression(Assignment);
+            "FS Variable Type"::text,
+            "FS Variable Type"::code:
+                CompileStringExpression(Assignment);
+            else
+                CompileExpression(Assignment);
+        end;
     end;
 
     local procedure CompileExpression(ParentNode: Integer) Expression: Integer
@@ -194,7 +249,7 @@ codeunit 81002 "FS Compiler"
             PeekNextLexeme("FS Lexeme Type"::Decimal):
                 Factor := CompileValue(ParentNode);
             PeekNextLexeme("FS Lexeme Type"::Symbol):
-                Factor := CompileSymbol(ParentNode);
+                Factor := CompileSymbol(ParentNode, "FS Variable Type"::"decimal");
             else
                 Error('TODO'); // TODO error message
         end;
@@ -228,12 +283,14 @@ codeunit 81002 "FS Compiler"
         Value := NodeTree.InsertNumericValue(ParentNode, Lexeme."Number Value");
     end;
 
-    local procedure CompileSymbol(ParentNode: Integer) Symbol: Integer
+    local procedure CompileSymbol(ParentNode: Integer; ExpectedType: Enum "FS Variable Type") Symbol: Integer
     var
         Lexeme: Record "FS Lexeme";
     begin
         Lexer.GetNextLexeme(Lexeme);
-        // TODO checks ?
+        // TODO type check ! - ExpectedType
+        // TODO type check ! - ExpectedType
+        // TODO type check ! - ExpectedType
         // TODO records/codeunits / functions ?
 
         case true of
@@ -244,6 +301,128 @@ codeunit 81002 "FS Compiler"
             else
                 Symbol := NodeTree.InsertVariable(ParentNode, Lexeme.Name);
         end;
+    end;
+
+    local procedure CompileBooleanExpression(ParentNode: Integer) Expression: Integer
+    var
+        Factor: Integer;
+    begin
+        Factor := CompileBooleanFactor(ParentNode);
+
+        case true of
+            // FIXME change and/or/xor/not to operator
+            // TODO repeated code
+            PeekNextLexeme("FS Operator"::"and"):
+                begin
+                    AssertNextLexeme("FS Operator"::"and");
+                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"and");
+                    CompileBooleanExpression(Expression);
+                end;
+            PeekNextLexeme("FS Operator"::"or"):
+                begin
+                    AssertNextLexeme("FS Operator"::"or");
+                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"or");
+                    CompileBooleanExpression(Expression);
+                end;
+            PeekNextLexeme("FS Operator"::"xor"):
+                begin
+                    AssertNextLexeme("FS Operator"::"xor");
+                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"xor");
+                    CompileBooleanExpression(Expression);
+                end;
+            else
+                Expression := Factor;
+        end;
+
+        NodeTree.UpdateParent(Factor, Expression);
+        NodeTree.UpdateOrderAndIndentation(Expression);
+    end;
+
+    local procedure CompileBooleanFactor(ParentNode: Integer) Factor: Integer
+    begin
+        case true of
+            PeekNextLexeme("FS Operator"::"not"):
+                Factor := CompileBooleanUnaryOperator(ParentNode);
+            PeekNextLexeme("FS Operator"::"("):
+                begin
+                    AssertNextLexeme("FS Operator"::"(");
+                    Factor := CompileBooleanExpression(ParentNode);
+                    AssertNextLexeme("FS Operator"::")");
+                end;
+            PeekNextLexeme("FS Lexeme Type"::Boolean):
+                Factor := CompileBooleanValue(ParentNode);
+            PeekNextLexeme("FS Lexeme Type"::Symbol):
+                Factor := CompileSymbol(ParentNode, "FS Variable Type"::"boolean");
+            else
+                Error('TODO'); // TODO error message
+        end;
+    end;
+
+    local procedure CompileBooleanUnaryOperator(ParentNode: Integer) UnaryOperator: Integer
+    begin
+        AssertNextLexeme("FS Operator"::"not");
+
+        UnaryOperator := NodeTree.InsertUnaryOperator(ParentNode, "FS Operator"::"not");
+        CompileBooleanExpression(UnaryOperator);
+    end;
+
+    local procedure CompileBooleanValue(ParentNode: Integer) Value: Integer
+    var
+        Lexeme: Record "FS Lexeme";
+    begin
+        Lexer.GetNextLexeme(Lexeme);
+        AssertLexeme(Lexeme, "FS Lexeme Type"::Boolean);
+
+        Value := NodeTree.InsertBooleanValue(ParentNode, Lexeme."Boolean Value");
+    end;
+
+    local procedure CompileStringExpression(ParentNode: Integer) Expression: Integer
+    var
+        Factor: Integer;
+    begin
+        Factor := CompileStringFactor(ParentNode);
+
+        case true of
+            PeekNextLexeme("FS Operator"::"+"):
+                begin
+                    AssertNextLexeme("FS Operator"::"+");
+                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"+"); // XXX add type ?
+                    CompileStringExpression(Expression);
+                end;
+            else
+                Expression := Factor;
+        end;
+
+        NodeTree.UpdateParent(Factor, Expression);
+        NodeTree.UpdateOrderAndIndentation(Expression);
+    end;
+
+    local procedure CompileStringFactor(ParentNode: Integer) Factor: Integer
+    begin
+        case true of
+            PeekNextLexeme("FS Operator"::"("):
+                begin
+                    AssertNextLexeme("FS Operator"::"(");
+                    Factor := CompileStringExpression(ParentNode);
+                    AssertNextLexeme("FS Operator"::")");
+                end;
+            PeekNextLexeme("FS Lexeme Type"::StringLiteral):
+                Factor := CompileStringValue(ParentNode);
+            PeekNextLexeme("FS Lexeme Type"::Symbol):
+                Factor := CompileSymbol(ParentNode, "FS Variable Type"::"text");
+            else
+                Error('TODO'); // TODO error message
+        end;
+    end;
+
+    local procedure CompileStringValue(ParentNode: Integer) Value: Integer
+    var
+        Lexeme: Record "FS Lexeme";
+    begin
+        Lexer.GetNextLexeme(Lexeme);
+        AssertLexeme(Lexeme, "FS Lexeme Type"::StringLiteral);
+
+        Value := NodeTree.InsertTextValue(ParentNode, Lexeme.GetTextValue());
     end;
 
     local procedure PeekNextLexeme(LexemeType: Enum "FS Lexeme Type"): Boolean
@@ -301,20 +480,42 @@ codeunit 81002 "FS Compiler"
         Lexeme: Record "FS Lexeme";
     begin
         Lexer.GetNextLexeme(Lexeme);
+        AssertLexeme(Lexeme, LexemeType, Keyword, Operator, Name);
+    end;
 
+    local procedure AssertLexeme
+    (
+        Lexeme: Record "FS Lexeme";
+        LexemeType: Enum "FS Lexeme Type"
+    )
+    begin
+        AssertLexeme(Lexeme, LexemeType, "FS Keyword"::" ", "FS Operator"::" ", '');
+    end;
+
+    local procedure AssertLexeme
+    (
+        Lexeme: Record "FS Lexeme";
+        LexemeType: Enum "FS Lexeme Type";
+        Keyword: Enum "FS Keyword";
+        Operator: Enum "FS Operator";
+        Name: Text
+    )
+    var
+        UnexpectedLexemeErr: Label 'Unexpected lexeme %1, expected %2.', Comment = '%1 = got, %2 = expected';
+    begin
         if Lexeme.Type <> LexemeType then
-            Error('Unexpected lexeme %1, expected %2.', Lexeme.Type, LexemeType);
+            Error(UnexpectedLexemeErr, Lexeme.Type, LexemeType);
 
         if Keyword <> "FS Keyword"::" " then
             if Lexeme.Keyword <> Keyword then
-                Error('Unexpected lexeme %1, expected %2.', Lexeme.Keyword, Keyword);
+                Error(UnexpectedLexemeErr, Lexeme.Keyword, Keyword);
 
         if Operator <> "FS Operator"::" " then
             if Lexeme.Operator <> Operator then
-                Error('Unexpected lexeme %1, expected %2.', Lexeme.Operator, Operator);
+                Error(UnexpectedLexemeErr, Lexeme.Operator, Operator);
 
         if Name <> '' then
             if Lexeme.Name <> Name then
-                Error('Unexpected lexeme %1, expected %2.', Lexeme.Name, Name);
+                Error(UnexpectedLexemeErr, Lexeme.Name, Name);
     end;
 }
