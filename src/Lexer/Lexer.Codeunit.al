@@ -53,92 +53,19 @@ codeunit 81000 "FS Lexer"
             NextChar = '':
                 ; // EOS
             NextChar in ['0' .. '9']: // number
-                DoParseNumber();
+                ParseNumber();
             NextChar = '''': // string literal
-                DoParseStringLiteral();
+                ParseStringLiteral();
             NextChar = '"': // symbol
-                DoParseSymbol();
+                ParseSymbol();
             NextChar = '/':
                 DoParseComment();
             IsOperator(NextChar):
-                // peek for div and mod?
-                // '-' might be a number?
-                DoParseOperator();
+                // FIXME div and mod?
+                ParseOperator();
             else // keyword/variable
-                DoParseSymbol();
+                ParseSymbol();
         end;
-    end;
-
-    // 610319240
-
-    local procedure DoParseNumber()
-    var
-        Number: Decimal;
-        IsDecimal: Boolean;
-    begin
-        Number := ParseNumber(IsDecimal);
-
-        if IsDecimal then
-            CreateLexeme(
-                "FS Lexeme Type"::Decimal,
-                '',
-                '',
-                Number,
-                "FS Operator"::" ",
-                "FS Keyword"::" "
-            )
-        else
-            CreateLexeme(
-                "FS Lexeme Type"::Integer,
-                '',
-                '',
-                Number,
-                "FS Operator"::" ",
-                "FS Keyword"::" "
-            );
-    end;
-
-    local procedure DoParseStringLiteral()
-    var
-        String: Text;
-    begin
-        String := ParseStringLiteral();
-
-        CreateLexeme(
-            "FS Lexeme Type"::StringLiteral,
-            '',
-            String,
-            0.0,
-            "FS Operator"::" ",
-            "FS Keyword"::" "
-        );
-    end;
-
-    local procedure DoParseSymbol()
-    var
-        String: Text;
-        Keyword: Enum "FS Keyword";
-    begin
-        String := ParseSymbol(Keyword);
-
-        if Keyword = "FS Keyword"::" " then
-            CreateLexeme(
-                "FS Lexeme Type"::Symbol,
-                String, // XXX
-                '',
-                0.0,
-                "FS Operator"::" ",
-                "FS Keyword"::" "
-            )
-        else
-            CreateLexeme(
-                "FS Lexeme Type"::Keyword,
-                String, // XXX
-                '',
-                0.0,
-                "FS Operator"::" ",
-                Keyword
-            );
     end;
 
     local procedure DoParseComment()
@@ -149,26 +76,9 @@ codeunit 81000 "FS Lexer"
             '/*':
                 ParseMultilineComment();
             else
-                DoParseOperator();
+                ParseOperator();
         end;
     end;
-
-    local procedure DoParseOperator()
-    var
-        Operator: Enum "FS Operator";
-    begin
-        Operator := ParseOperator();
-
-        CreateLexeme(
-            "FS Lexeme Type"::Operator,
-            '',
-            '',
-            0.0,
-            Operator,
-            "FS Keyword"::" "
-        );
-    end;
-
 
     procedure EOS(): Boolean
     begin
@@ -238,11 +148,13 @@ codeunit 81000 "FS Lexer"
         Position += 1;
     end;
 
-    local procedure ParseNumber(var IsDecimal: Boolean) Number: Decimal
+    local procedure ParseNumber()
     var
         NextChar: Text[1];
         Digit: Integer;
         DecimalPlaces: Integer;
+        Number: Decimal;
+        IsDecimal: Boolean;
     begin
         IsDecimal := false;
 
@@ -276,9 +188,16 @@ codeunit 81000 "FS Lexer"
                 Number += Digit;
             end;
         end;
+
+        if IsDecimal then
+            CreateDecimalLexeme(Number)
+        else
+            CreateIntegerLexeme(Number);
     end;
 
-    local procedure ParseStringLiteral() StringLiteral: Text
+    local procedure ParseStringLiteral()
+    var
+        StringLiteral: Text;
     begin
         ReadNext(); // consume '
 
@@ -289,6 +208,8 @@ codeunit 81000 "FS Lexer"
             Error('Unexpected end of stream, expected %1.', '''');
 
         ReadNext(); // consume '
+
+        CreateStringLiteralLexeme(StringLiteral);
     end;
 
     local procedure ParseComment()
@@ -332,16 +253,35 @@ codeunit 81000 "FS Lexer"
 
         if Operator.AsInteger() >= 1000 then // two char operator ids are 1000+
             ReadNext(); // consume second part of the operator
+
+        CreateOperatorLexeme(Operator);
     end;
 
     local procedure IsOperator(Char: Text[1]): Boolean
     begin
+        // XXX boolean operator behaviour?
         exit("FS Operator".Names().Contains(Char));
+    end;
+
+    local procedure IsBooleanValue(Symbol: Text): Boolean
+    begin
+        exit(Symbol.ToLower() in ['true', 'false']);
+    end;
+
+    local procedure IsBooleanOperator(Symbol: Text): Boolean
+    begin
+        // XXX not pretty
+        exit(Symbol.ToLower() in [
+                Format("FS Operator"::"and"),
+                Format("FS Operator"::"or"),
+                Format("FS Operator"::"xor"),
+                Format("FS Operator"::"not")
+            ]);
     end;
 
     local procedure IsKeyword(Symbol: Text): Boolean
     begin
-        exit("FS Keyword".Names().Contains(LowerCase(Symbol)));
+        exit("FS Keyword".Names().Contains(Symbol.ToLower()));
     end;
 
     local procedure EndOfStringLiteral(): Boolean
@@ -361,11 +301,11 @@ codeunit 81000 "FS Lexer"
         exit(true);
     end;
 
-    local procedure ParseSymbol
-    (
-        var Keyword: Enum "FS Keyword"
-    ) Symbol: Text
+    local procedure ParseSymbol()
     var
+        Keyword: Enum "FS Keyword";
+        Operator: Enum "FS Operator";
+        Symbol: Text;
         Quoted: Boolean;
         Index: Integer;
     begin
@@ -384,10 +324,31 @@ codeunit 81000 "FS Lexer"
         end;
 
         if not Quoted then
-            if IsKeyword(Symbol) then begin
-                Index := Keyword.Names().IndexOf(LowerCase(Symbol));
-                Keyword := "FS Keyword".FromInteger("FS Keyword".Ordinals().Get(Index));
+            case true of
+                IsBooleanValue(Symbol):
+                    begin
+                        CreateBooleanLexeme(Symbol.ToLower() = 'true');
+                        exit;
+                    end;
+                IsBooleanOperator(Symbol):
+                    begin
+                        Index := "FS Operator".Names().IndexOf(Symbol.ToLower());
+                        Operator := "FS Operator".FromInteger("FS Operator".Ordinals().Get(Index));
+
+                        CreateOperatorLexeme(Operator);
+                        exit;
+                    end;
+                IsKeyword(Symbol):
+                    begin
+                        Index := "FS Keyword".Names().IndexOf(Symbol.ToLower());
+                        Keyword := "FS Keyword".FromInteger("FS Keyword".Ordinals().Get(Index));
+
+                        CreateKeywordLexeme(Symbol, Keyword); // XXX
+                        exit;
+                    end;
             end;
+
+        CreateSymbolLexeme(Symbol); // XXX
     end;
 
     local procedure IsSymbolDelimiter(Char: Text[1]; Quoted: Boolean): Boolean
@@ -404,15 +365,101 @@ codeunit 81000 "FS Lexer"
         exit(false);
     end;
 
+    // XXX 6.0 regions #region create lexeme methods
+
+    local procedure CreateIntegerLexeme(Value: Integer)
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::Integer,
+            '',
+            '',
+            false,
+            Value,
+            "FS Operator"::" ",
+            "FS Keyword"::" ");
+    end;
+
+    local procedure CreateDecimalLexeme(Value: Decimal)
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::Decimal,
+            '',
+            '',
+            false,
+            Value,
+            "FS Operator"::" ",
+            "FS Keyword"::" ");
+    end;
+
+    local procedure CreateBooleanLexeme(Value: Boolean)
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::Boolean,
+            '',
+            '',
+            Value,
+            0.0,
+            "FS Operator"::" ",
+            "FS Keyword"::" ");
+    end;
+
+    local procedure CreateStringLiteralLexeme(Value: Text)
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::StringLiteral,
+            '',
+            Value,
+            false,
+            0.0,
+            "FS Operator"::" ",
+            "FS Keyword"::" ");
+    end;
+
+    local procedure CreateSymbolLexeme(Name: Text[250])
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::Symbol,
+            Name, // XXX
+            '',
+            false,
+            0.0,
+            "FS Operator"::" ",
+            "FS Keyword"::" ");
+    end;
+
+    local procedure CreateOperatorLexeme(Operator: Enum "FS Operator")
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::Operator,
+            '',
+            '',
+            false,
+            0.0,
+            Operator,
+            "FS Keyword"::" ");
+    end;
+
+    local procedure CreateKeywordLexeme(Name: Text[250]; Keyword: Enum "FS Keyword")
+    begin
+        CreateLexeme(
+            "FS Lexeme Type"::Keyword,
+            Name,
+            '',
+            false,
+            0.0,
+            "FS Operator"::" ",
+            Keyword);
+    end;
 
     local procedure CreateLexeme
     (
         Type: Enum "FS Lexeme Type";
-        Name: Text[100];
-        Value: Text;
+                  Name: Text[250];
+    Value: Text;
+        BooleanValue: Boolean;
         Number: Decimal;
         Operator: Enum "FS Operator";
-        Keyword: Enum "FS Keyword"
+                      Keyword: Enum "FS Keyword"
     )
     begin
         TempLexeme.Init();
@@ -425,7 +472,10 @@ codeunit 81000 "FS Lexer"
 
         TempLexeme.SetTextValue(Value);
         TempLexeme."Number Value" := Number;
+        TempLexeme."Boolean Value" := BooleanValue;
 
         TempLexeme.Insert(true);
     end;
+
+    // #endregion
 }

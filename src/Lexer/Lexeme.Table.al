@@ -17,7 +17,7 @@ table 81000 "FS Lexeme"
             Caption = 'Type';
             DataClassification = SystemMetadata;
         }
-        field(3; Name; Text[100])
+        field(3; Name; Text[250])
         {
             Caption = 'Name';
             DataClassification = SystemMetadata;
@@ -49,6 +49,11 @@ table 81000 "FS Lexeme"
         field(102; "Text Blob"; Blob)
         {
             Caption = 'Text Blob';
+            DataClassification = SystemMetadata;
+        }
+        field(103; "Boolean Value"; Boolean)
+        {
+            Caption = 'Boolean Value';
             DataClassification = SystemMetadata;
         }
     }

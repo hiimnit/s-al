@@ -28,6 +28,10 @@ enum 81000 "FS Lexeme Type"
     {
         Caption = 'Decimal';
     }
+    value(42; Boolean)
+    {
+        Caption = 'Boolean';
+    }
     value(50; Operator)
     {
         Caption = 'Operator';

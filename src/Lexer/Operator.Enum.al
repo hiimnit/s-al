@@ -3,6 +3,7 @@ enum 81002 "FS Operator"
     // XXX 6.0 Caption = 'Operator';
 
     // two char operator ids are 1000+
+    // boolean operator ids are 10000+
 
     value(0; " ") { }
 
@@ -32,4 +33,9 @@ enum 81002 "FS Operator"
     value(19; ",") { }
     value(20; "[") { }
     value(21; "]") { }
+
+    value(10000; "and") { }
+    value(10001; "or") { }
+    value(10002; "xor") { }
+    value(10003; "not") { }
 }
