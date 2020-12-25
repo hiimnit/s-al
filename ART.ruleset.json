@@ -20,7 +20,12 @@
         {
             "id": "AA0072",
             "action": "Hidden",
-            "justification": "Affix check disabled"
+            "justification": "Affix check disabled."
+        },
+        {
+            "id": "AS0092",
+            "action": "Hidden",
+            "justification": "Insights key check disabled."
         }
     ]
 }

@@ -29,4 +29,5 @@ enum 81001 "FS Keyword"
     value(22; "while") { }
     value(23; "break") { }
     value(24; "exit") { }
+    value(25; "trigger") { }
 }

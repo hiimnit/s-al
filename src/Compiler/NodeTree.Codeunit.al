@@ -14,10 +14,11 @@ codeunit 81003 "FS Node Tree"
 
     // TODO Order and Indentation!
 
-    local procedure InitTempNode()
+    local procedure InitTempNode(ParentNode: Integer)
     begin
         TempNode.Init();
         TempNode."Entry No." := 0;
+        TempNode."Parent Entry No." := ParentNode;
     end;
 
     procedure InsertCompoundStatement(): Integer
@@ -27,7 +28,7 @@ codeunit 81003 "FS Node Tree"
 
     procedure InsertCompoundStatement(ParentNode: Integer): Integer
     begin
-        InitTempNode();
+        InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::CompoundStatement;
 
         exit(InsertTempNode());
@@ -39,7 +40,7 @@ codeunit 81003 "FS Node Tree"
         Name: Text[100]
     ): Integer
     begin
-        InitTempNode();
+        InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::Assignment;
         TempNode."Variable Name" := Name;
 
@@ -52,7 +53,7 @@ codeunit 81003 "FS Node Tree"
         Operation: Enum "FS Operator"
     ): Integer
     begin
-        InitTempNode();
+        InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::Operation;
         TempNode.Operator := Operation;
 
@@ -65,7 +66,7 @@ codeunit 81003 "FS Node Tree"
         Operator: Enum "FS Operator"
     ): Integer
     begin
-        InitTempNode();
+        InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::UnaryOperator;
         TempNode.Operator := Operator;
 
@@ -78,7 +79,7 @@ codeunit 81003 "FS Node Tree"
         Value: Decimal
     ): Integer
     begin
-        InitTempNode();
+        InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::NumericValue;
         TempNode."Numeric Value" := Value;
 
@@ -91,7 +92,7 @@ codeunit 81003 "FS Node Tree"
         Name: Text[100]
     ): Integer
     begin
-        InitTempNode();
+        InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::Variable;
         TempNode."Variable Name" := Name;
 
@@ -114,7 +115,7 @@ codeunit 81003 "FS Node Tree"
         if TempNode."Parent Entry No." = NewParentNo then
             exit;
 
-        TempNode.Validate("Parent Entry No.", NewParentNo);
+        TempNode."Parent Entry No." := NewParentNo;
         TempNode.Modify(true);
     end;
 

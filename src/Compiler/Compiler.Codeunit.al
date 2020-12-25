@@ -19,6 +19,13 @@ codeunit 81002 "FS Compiler"
     local procedure CompileScript()
     begin
         // TODO temporary
+        AssertNextLexeme("FS Keyword"::"trigger");
+        AssertNextLexeme('OnRun');
+        AssertNextLexeme("FS Operator"::"(");
+        AssertNextLexeme("FS Operator"::")");
+
+        if PeekNextLexeme("FS Keyword"::"var") then
+            CompileVariableDefinitionList();
         CompileCompoundStatement();
     end;
 
@@ -26,6 +33,29 @@ codeunit 81002 "FS Compiler"
     begin
         Clear(Lexer);
         Lexer.Analyze(Code);
+    end;
+
+    local procedure CompileVariableDefinitionList()
+    begin
+        AssertNextLexeme("FS Keyword"::"var");
+
+        while PeekNextLexeme("FS Lexeme Type"::"Symbol") do
+            CompileVariableDefinition();
+    end;
+
+    local procedure CompileVariableDefinition()
+    var
+        Lexeme: Record "FS Lexeme";
+    begin
+        // TODO insert variable definition = new table ?
+        Lexer.GetNextLexeme(Lexeme);
+
+        AssertNextLexeme("FS Operator"::":");
+
+        // TODO compile type
+        Lexer.GetNextLexeme(Lexeme);
+
+        AssertNextLexeme("FS Operator"::";");
     end;
 
     local procedure CompileCompoundStatement()
@@ -47,8 +77,18 @@ codeunit 81002 "FS Compiler"
     local procedure CompileStatment(CompoundStatement: Integer)
     begin
         case true of
+            PeekNextLexeme("FS Keyword"::"if"):
+                ; // TODO CompileIfStatement = condition + statement/compoundstatement
+            PeekNextLexeme("FS Keyword"::"repeat"):
+                ; // TODO CompileRepeatStatement
+            PeekNextLexeme("FS Keyword"::"while"):
+                ; // TODO CompileWhileStatement
+            PeekNextLexeme("FS Keyword"::"for"):
+                ; // TODO CompileForStatement
+            PeekNextLexeme("FS Keyword"::"foreach"):
+                ; // TODO CompileForeachStatement
             PeekNextLexeme("FS Lexeme Type"::Symbol):
-                CompileAssignment(CompoundStatement);
+                CompileAssignmentStatement(CompoundStatement);
             else
                 NoOp();
         end;
@@ -58,13 +98,15 @@ codeunit 81002 "FS Compiler"
     begin
     end;
 
-    local procedure CompileAssignment(CompoundStatement: Integer)
+    local procedure CompileAssignmentStatement(CompoundStatement: Integer)
     var
+        Lexeme: Record "FS Lexeme";
         Variable: Text[100];
         Assignment: Integer;
     begin
-        Variable := ''; // TODO
-                        // TODO check variable declaration 
+        Lexer.GetNextLexeme(Lexeme);
+        Variable := Lexeme.Name;
+        // TODO check variable declaration 
 
         AssertNextLexeme("FS Operator"::":=");
 
@@ -136,25 +178,23 @@ codeunit 81002 "FS Compiler"
         end;
     end;
 
-    local procedure CompileFactor(ParentNode: Integer): Integer
-    var
-        myInt: Integer;
+    local procedure CompileFactor(ParentNode: Integer) Factor: Integer
     begin
         case true of
             PeekNextLexeme("FS Operator"::"+"),
             PeekNextLexeme("FS Operator"::"-"):
-                CompileUnaryOperator(ParentNode);
+                Factor := CompileUnaryOperator(ParentNode);
             PeekNextLexeme("FS Operator"::"("):
                 begin
                     AssertNextLexeme("FS Operator"::"(");
-                    CompileExpression(ParentNode);
+                    Factor := CompileExpression(ParentNode);
                     AssertNextLexeme("FS Operator"::")");
                 end;
             PeekNextLexeme("FS Lexeme Type"::Integer),
             PeekNextLexeme("FS Lexeme Type"::Decimal):
-                CompileValue(ParentNode);
+                Factor := CompileValue(ParentNode);
             PeekNextLexeme("FS Lexeme Type"::Symbol):
-                CompileSymbol(ParentNode);
+                Factor := CompileSymbol(ParentNode);
             else
                 Error('TODO'); // TODO error message
         end;
@@ -210,7 +250,7 @@ codeunit 81002 "FS Compiler"
     var
         Lexeme: Record "FS Lexeme";
     begin
-        Lexer.GetNextLexeme(Lexeme);
+        Lexer.PeekNextLexeme(Lexeme);
         exit(Lexeme.Type = LexemeType);
     end;
 
@@ -218,38 +258,44 @@ codeunit 81002 "FS Compiler"
     var
         Lexeme: Record "FS Lexeme";
     begin
-        Lexer.GetNextLexeme(Lexeme);
+        Lexer.PeekNextLexeme(Lexeme);
         exit(Lexeme.Operator = Operator);
     end;
 
-    local procedure PeekNextLexemeType(LexemeType: Enum "FS Lexeme Type"; Keyword: Enum "FS Keyword")
+    local procedure PeekNextLexeme(Keyword: Enum "FS Keyword"): Boolean
     var
         Lexeme: Record "FS Lexeme";
     begin
-        Lexer.GetNextLexeme(Lexeme);
-        // TODO
+        Lexer.PeekNextLexeme(Lexeme);
+        exit(Lexeme.Keyword = Keyword);
     end;
 
     local procedure AssertNextLexeme(LexemeType: Enum "FS Lexeme Type")
     begin
-        AssertNextLexeme(LexemeType, "FS Keyword"::" ", "FS Operator"::" ");
+        AssertNextLexeme(LexemeType, "FS Keyword"::" ", "FS Operator"::" ", '');
     end;
 
     local procedure AssertNextLexeme(Keyword: Enum "FS Keyword")
     begin
-        AssertNextLexeme("FS Lexeme Type"::Keyword, Keyword, "FS Operator"::" ");
+        AssertNextLexeme("FS Lexeme Type"::Keyword, Keyword, "FS Operator"::" ", '');
     end;
 
     local procedure AssertNextLexeme(Operator: Enum "FS Operator")
     begin
-        AssertNextLexeme("FS Lexeme Type"::Operator, "FS Keyword"::" ", Operator);
+        AssertNextLexeme("FS Lexeme Type"::Operator, "FS Keyword"::" ", Operator, '');
+    end;
+
+    local procedure AssertNextLexeme(SymbolName: Text)
+    begin
+        AssertNextLexeme("FS Lexeme Type"::Symbol, "FS Keyword"::" ", "FS Operator"::" ", SymbolName);
     end;
 
     local procedure AssertNextLexeme
     (
         LexemeType: Enum "FS Lexeme Type";
         Keyword: Enum "FS Keyword";
-        Operator: Enum "FS Operator"
+        Operator: Enum "FS Operator";
+        Name: Text
     )
     var
         Lexeme: Record "FS Lexeme";
@@ -266,5 +312,9 @@ codeunit 81002 "FS Compiler"
         if Operator <> "FS Operator"::" " then
             if Lexeme.Operator <> Operator then
                 Error('Unexpected lexeme %1, expected %2.', Lexeme.Operator, Operator);
+
+        if Name <> '' then
+            if Lexeme.Name <> Name then
+                Error('Unexpected lexeme %1, expected %2.', Lexeme.Name, Name);
     end;
 }

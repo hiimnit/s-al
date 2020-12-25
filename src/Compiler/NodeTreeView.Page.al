@@ -17,18 +17,17 @@ page 81002 "FS Node Tree View"
                 ShowAsTree = true;
                 TreeInitialState = CollapseAll;
                 IndentationColumn = Indentation;
-                IndentationControls = "Entry No.", Type;
+                IndentationControls = Type;
 
-                field("Entry No."; Rec."Entry No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the entry number.';
-                    Visible = false;
-                }
                 field(Type; Rec.Type)
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the entry type.';
+                }
+                field("Entry No."; Rec."Entry No.")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the entry number.';
                 }
                 field("Parent Entry No."; Rec."Parent Entry No.")
                 {
