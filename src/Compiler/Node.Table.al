@@ -22,6 +22,17 @@ table 81001 "FS Node"
             TableRelation = "FS Node"."Entry No.";
         }
 
+        field(10; "Function Name"; Text[250])
+        {
+            Caption = 'Function Name';
+            DataClassification = SystemMetadata;
+        }
+        field(11; "Function No."; Integer)
+        {
+            Caption = 'Function No.';
+            DataClassification = SystemMetadata;
+        }
+
         field(100; Operator; Enum "FS Operator")
         {
             Caption = 'Operator';
@@ -52,6 +63,22 @@ table 81001 "FS Node"
         field(105; "Variable Name"; Text[250])
         {
             Caption = 'Variable Name';
+            DataClassification = SystemMetadata;
+        }
+
+        field(200; "If Condition Node"; Integer)
+        {
+            Caption = 'If Condition Node';
+            DataClassification = SystemMetadata;
+        }
+        field(201; "If True Statement Node"; Integer)
+        {
+            Caption = 'If True Statement Node';
+            DataClassification = SystemMetadata;
+        }
+        field(202; "If False Statement Node"; Integer)
+        {
+            Caption = 'If False Statement Node';
             DataClassification = SystemMetadata;
         }
 

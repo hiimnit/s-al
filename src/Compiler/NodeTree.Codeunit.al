@@ -3,7 +3,9 @@ codeunit 81003 "FS Node Tree"
     var
         TempNode: Record "FS Node" temporary;
         TempVariable: Record "FS Variable" temporary;
+        CurrentFunction: Integer;
         Order: Integer;
+        Indentation: Integer;
 
     procedure ShowNodeTree()
     var
@@ -13,13 +15,49 @@ codeunit 81003 "FS Node Tree"
         NodeTreeView.Run();
     end;
 
-    // TODO Order and Indentation!
-
     local procedure InitTempNode(ParentNode: Integer)
     begin
         TempNode.Init();
         TempNode."Entry No." := 0;
         TempNode."Parent Entry No." := ParentNode;
+
+        TempNode."Function No." := CurrentFunction;
+
+        TempNode.Indentation := Indentation;
+    end;
+
+    procedure InsertFunction(Name: Text[250]): Integer
+    begin
+        InitTempNode(0);
+        TempNode.Type := "FS Node Type"::Function;
+        TempNode."Function Name" := Name;
+
+        CurrentFunction := InsertTempNode();
+
+        exit(CurrentFunction);
+    end;
+
+    procedure InsertIfStatement(ParentNode: Integer): Integer
+    begin
+        InitTempNode(ParentNode);
+        TempNode.Type := "FS Node Type"::IfStatement;
+
+        exit(InsertTempNode());
+    end;
+
+    procedure UpdateIfStatement
+    (
+        IfNode: Integer;
+        ConditionNode: Integer;
+        TrueNode: Integer;
+        FalseNode: Integer
+    )
+    begin
+        TempNode.Get(IfNode);
+        TempNode."If Condition Node" := ConditionNode;
+        TempNode."If True Statement Node" := TrueNode;
+        TempNode."If False Statement Node" := FalseNode;
+        TempNode.Modify(true);
     end;
 
     procedure InsertCompoundStatement(ParentNode: Integer): Integer
@@ -134,11 +172,26 @@ codeunit 81003 "FS Node Tree"
     procedure UpdateParent(NodeNo: Integer; NewParentNo: Integer)
     begin
         TempNode.Get(NodeNo);
-        if TempNode."Parent Entry No." = NewParentNo then
+        if NewParentNo in [TempNode."Entry No.", TempNode."Parent Entry No."] then
             exit;
 
         TempNode."Parent Entry No." := NewParentNo;
         TempNode.Modify(true);
+    end;
+
+    procedure ResetIndentation()
+    begin
+        Indentation := 0;
+    end;
+
+    procedure Indent()
+    begin
+        Indentation += 1;
+    end;
+
+    procedure UnIndent()
+    begin
+        Indentation -= 1;
     end;
 
     procedure UpdateOrderAndIndentation(NodeNo: Integer)
@@ -171,31 +224,54 @@ codeunit 81003 "FS Node Tree"
             until TempChildNode.Next() = 0;
     end;
 
-    procedure InsertLocalVariable
+    procedure InsertVariableDefinition
     (
+        Scope: Enum "FS Variable Scope";
         Name: Text[250];
         Type: Enum "FS Variable Type";
-        ParentNode: Integer // TODO rename
+        FunctionNo: Integer
     )
     begin
-        InsertLocalVariable(Name, Type, ParentNode, 0);
+        InsertVariableDefinition(Scope, Name, Type, FunctionNo, 0);
     end;
 
-    procedure InsertLocalVariable
+    procedure InsertVariableDefinition
     (
+        Scope: Enum "FS Variable Scope";
         Name: Text[250];
         Type: Enum "FS Variable Type";
-        ParentNode: Integer; // TODO rename
+        FunctionNo: Integer;
         Length: Integer
     )
     begin
+        CheckVariableDefinition(Scope, FunctionNo, Name);
+
         TempVariable.Init();
+        TempVariable."Entry No." := 0;
         TempVariable.Name := Name;
         TempVariable.Type := Type;
-        TempVariable."Parent Node No." := ParentNode;
+        TempVariable."Function No." := FunctionNo;
         TempVariable.Length := Length;
-        TempVariable.Scope := TempVariable.Scope::Local;
+        TempVariable.Scope := Scope;
         TempVariable.Insert(true);
+    end;
+
+    local procedure CheckVariableDefinition
+    (
+        Scope: Enum "FS Variable Scope";
+        FunctionNo: Integer;
+        Name: Text[250]
+    )
+    var
+        TempVariableCopy: Record "FS Variable" temporary;
+        AlreadyDefinedErr: Label 'Variable %1 is already defined.', Comment = '%1 = Variable name';
+    begin
+        TempVariableCopy.Copy(TempVariable, true);
+        TempVariableCopy.SetRange(Scope, Scope);
+        TempVariableCopy.SetRange("Function No.", FunctionNo);
+        TempVariableCopy.SetRange(Name, Name);
+        if not TempVariableCopy.IsEmpty() then
+            Error(AlreadyDefinedErr, Name);
     end;
 
     procedure ValidateVariable

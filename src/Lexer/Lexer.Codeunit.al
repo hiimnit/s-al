@@ -5,6 +5,7 @@ codeunit 81000 "FS Lexer"
         Code: Text;
         CodeLength: Integer;
         Position: Integer;
+        LastLexeme: Boolean;
 
     procedure Analyze(NewCode: Text)
     begin
@@ -29,10 +30,15 @@ codeunit 81000 "FS Lexer"
         Lexemes.Run();
     end;
 
+    procedure EOF(): Boolean
+    begin
+        exit(LastLexeme);
+    end;
+
     procedure GetNextLexeme(var Lexeme: Record "FS Lexeme")
     begin
         Lexeme := TempLexeme;
-        TempLexeme.Next(); // FIXME EOF detection 
+        LastLexeme := TempLexeme.Next() = 0;
     end;
 
     procedure PeekNextLexeme(var Lexeme: Record "FS Lexeme")
@@ -80,7 +86,7 @@ codeunit 81000 "FS Lexer"
         end;
     end;
 
-    procedure EOS(): Boolean
+    local procedure EOS(): Boolean
     begin
         exit(EOS(0));
     end;

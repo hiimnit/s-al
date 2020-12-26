@@ -23,16 +23,13 @@ page 81002 "FS Node Tree View"
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the entry type.';
+                    StyleExpr = StyleExpr;
                 }
-                field("Entry No."; Rec."Entry No.")
+                field("Function Name"; Rec."Function Name")
                 {
                     ApplicationArea = All;
-                    ToolTip = 'Specifies the entry number.';
-                }
-                field("Parent Entry No."; Rec."Parent Entry No.")
-                {
-                    ApplicationArea = All;
-                    ToolTip = 'Specifies the entry parent entry number.';
+                    ToolTip = 'Specifies the function name.';
+                    StyleExpr = StyleExpr;
                 }
                 field(Operator; Rec.Operator)
                 {
@@ -49,6 +46,16 @@ page 81002 "FS Node Tree View"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the variable name.';
                 }
+                field("Entry No."; Rec."Entry No.")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the entry number.';
+                }
+                field("Parent Entry No."; Rec."Parent Entry No.")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the entry parent entry number.';
+                }
             }
         }
         area(FactBoxes)
@@ -57,16 +64,28 @@ page 81002 "FS Node Tree View"
             {
                 Caption = 'Local Variables';
                 ApplicationArea = All;
-                // TODO filter!
+                SubPageLink = "Function No." = field("Function No."); // XXX not visible on "Function" line
             }
             part(GlobalVariables; "FS Variables")
             {
                 Caption = 'Global Variables';
                 ApplicationArea = All;
-                // TODO filter!
             }
         }
     }
+
+    var
+        StyleExpr: Text;
+
+    trigger OnAfterGetRecord()
+    begin
+        case Type of
+            "FS Node Type"::Function:
+                StyleExpr := 'strong';
+            else
+                StyleExpr := 'none';
+        end;
+    end;
 
     procedure SetRecords(var Node: Record "FS Node" temporary; var Variable: Record "FS Variable" temporary)
     begin

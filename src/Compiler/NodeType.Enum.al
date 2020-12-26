@@ -7,7 +7,16 @@ enum 81003 "FS Node Type"
         Caption = 'Pass';
     }
 
-    value(100; CompoundStatement)
+    value(10; Function)
+    {
+        Caption = 'Function';
+    }
+
+    value(100; IfStatement)
+    {
+        Caption = 'If Statement';
+    }
+    value(109; CompoundStatement)
     {
         Caption = 'Compound Statement';
     }

@@ -27,16 +27,14 @@ table 81002 "FS Variable"
             Caption = 'Type';
             DataClassification = SystemMetadata;
         }
-        field(10; Scope; Option)
+        field(10; Scope; Enum "FS Variable Scope")
         {
             Caption = 'Scope';
             DataClassification = SystemMetadata;
-            OptionMembers = Local,Global;
-            OptionCaption = 'Local,Global';
         }
-        field(11; "Parent Node No."; Integer)
+        field(11; "Function No."; Integer)
         {
-            Caption = 'Parent Node No.';
+            Caption = 'Function No.';
             DataClassification = SystemMetadata;
         }
     }

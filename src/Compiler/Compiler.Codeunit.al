@@ -16,34 +16,124 @@ codeunit 81002 "FS Compiler"
         NodeTree.ShowNodeTree();
     end;
 
-    local procedure CompileScript()
-    begin
-        // TODO temporary
-        AssertNextLexeme("FS Keyword"::"trigger");
-        AssertNextLexeme('OnRun');
-        AssertNextLexeme("FS Operator"::"(");
-        AssertNextLexeme("FS Operator"::")");
-
-        if PeekNextLexeme("FS Keyword"::"var") then
-            CompileVariableDefinitionList(0); // XXX 0 = main
-        CompileCompoundStatement(0); // XXX 0 = main
-    end;
-
     local procedure Analyze(Code: Text)
     begin
         Clear(Lexer);
         Lexer.Analyze(Code);
     end;
 
-    local procedure CompileVariableDefinitionList(ParentNode: Integer)
+    local procedure CompileScript()
+    var
+        OnRunDefined: Boolean;
+        MultipleOnRunDefinitionsErr: Label 'Multiple OnRun definitions are not allowed.';
+        OnRunNotDefinedErr: Label 'OnRun is not defined.';
+    begin
+        // TODO first scan code for all defined functions?
+        OnRunDefined := false;
+
+        while not Lexer.EOF() do
+            case true of
+                PeekNextLexeme("FS Keyword"::"local"),
+                PeekNextLexeme("FS Keyword"::"procedure"):
+                    CompileFunction();
+                PeekNextLexeme("FS Keyword"::"var"):
+                    CompileVariableDefinitionList(0, "FS Variable Scope"::Global);
+                PeekNextLexeme("FS Keyword"::"trigger"):
+                    begin
+                        if OnRunDefined then
+                            Error(MultipleOnRunDefinitionsErr);
+
+                        OnRunDefined := true;
+
+                        CompileOnRun();
+                    end;
+                else
+                    Error('TODO'); // TODO
+            end;
+
+        if not OnRunDefined then
+            Error(OnRunNotDefinedErr);
+    end;
+
+    local procedure CompileOnRun()
+    var
+        Function: Integer;
+        OnRunFunctionTok: Label 'OnRun', Locked = true;
+    begin
+        NodeTree.ResetIndentation(); // XXX not necessary ?
+
+        AssertNextLexeme("FS Keyword"::"trigger");
+        AssertNextLexeme(OnRunFunctionTok);
+        AssertNextLexeme("FS Operator"::"(");
+        AssertNextLexeme("FS Operator"::")");
+
+        Function := NodeTree.InsertFunction(OnRunFunctionTok);
+
+        if PeekNextLexeme("FS Keyword"::"var") then
+            CompileVariableDefinitionList(Function, "FS Variable Scope"::Local);
+
+        NodeTree.Indent();
+        CompileCompoundStatement(Function);
+        AssertNextLexeme("FS Operator"::";");
+        NodeTree.UnIndent();
+    end;
+
+    local procedure CompileFunction()
+    var
+        Lexeme: Record "FS Lexeme";
+        Name: Text[250];
+        Function: Integer;
+    begin
+        NodeTree.ResetIndentation(); // XXX not necessary ?
+
+        if PeekNextLexeme("FS Keyword"::"local") then
+            AssertNextLexeme("FS Keyword"::"local");
+
+        AssertNextLexeme("FS Keyword"::"procedure");
+
+        Lexer.GetNextLexeme(Lexeme);
+        AssertLexeme(Lexeme, "FS Lexeme Type"::Symbol);
+        Name := Lexeme.Name;
+
+        Function := NodeTree.InsertFunction(Name);
+
+        CompileParameterDefinitionList(Function);
+
+        if PeekNextLexeme("FS Keyword"::"var") then
+            CompileVariableDefinitionList(Function, "FS Variable Scope"::Local);
+
+        NodeTree.Indent();
+        CompileCompoundStatement(Function);
+        AssertNextLexeme("FS Operator"::";");
+        NodeTree.UnIndent();
+    end;
+
+    local procedure CompileParameterDefinitionList(Function: Integer)
+    begin
+        AssertNextLexeme("FS Operator"::"(");
+        while not PeekNextLexeme("FS Operator"::")") do begin
+            // TODO parameter
+            ;
+            ;
+        end;
+        AssertNextLexeme("FS Operator"::")");
+
+        if PeekNextLexeme("FS Operator"::":") then begin
+            // TODO return type/variable declaration
+            ;
+            ;
+        end;
+    end;
+
+    local procedure CompileVariableDefinitionList(ParentNode: Integer; Scope: Enum "FS Variable Scope")
     begin
         AssertNextLexeme("FS Keyword"::"var");
 
         while PeekNextLexeme("FS Lexeme Type"::"Symbol") do
-            CompileVariableDefinition(ParentNode);
+            CompileVariableDefinition(ParentNode, Scope);
     end;
 
-    local procedure CompileVariableDefinition(ParentNode: Integer)
+    local procedure CompileVariableDefinition(ParentNode: Integer; Scope: Enum "FS Variable Scope")
     var
         Lexeme: Record "FS Lexeme";
         Name: Text[250];
@@ -51,7 +141,6 @@ codeunit 81002 "FS Compiler"
         Length: Integer;
         i: Integer;
     begin
-        // TODO insert variable definition = new table ?
         Lexer.GetNextLexeme(Lexeme);
         AssertLexeme(Lexeme, "FS Lexeme Type"::Symbol);
 
@@ -59,7 +148,6 @@ codeunit 81002 "FS Compiler"
 
         AssertNextLexeme("FS Operator"::":");
 
-        // TODO compile type
         Lexer.GetNextLexeme(Lexeme);
         AssertLexeme(Lexeme, "FS Lexeme Type"::Keyword);
 
@@ -83,7 +171,8 @@ codeunit 81002 "FS Compiler"
                 end;
         end;
 
-        NodeTree.InsertLocalVariable(
+        NodeTree.InsertVariableDefinition(
+            Scope,
             Name,
             Type,
             ParentNode,
@@ -92,27 +181,32 @@ codeunit 81002 "FS Compiler"
         AssertNextLexeme("FS Operator"::";");
     end;
 
-    local procedure CompileCompoundStatement(ParentNode: Integer)
-    var
-        CompoundStatement: Integer;
+    local procedure CompileCompoundStatement(ParentNode: Integer) CompoundStatement: Integer
     begin
         AssertNextLexeme("FS Keyword"::"begin");
         CompoundStatement := NodeTree.InsertCompoundStatement(ParentNode);
-        CompileStatment(CompoundStatement);
+        CompileStatement(CompoundStatement);
 
         while PeekNextLexeme("FS Operator"::";") do begin
             AssertNextLexeme("FS Operator"::";");
-            CompileStatment(CompoundStatement);
+            CompileStatement(CompoundStatement);
         end;
 
         AssertNextLexeme("FS Keyword"::"end");
     end;
 
-    local procedure CompileStatment(CompoundStatement: Integer)
+    local procedure CompileStatement(CompoundStatement: Integer) Statement: Integer
     begin
         case true of
+            PeekNextLexeme("FS Keyword"::"begin"):
+                begin
+                    NodeTree.Indent();
+                    Statement := CompileCompoundStatement(CompoundStatement);
+                    AssertNextLexeme("FS Operator"::";");
+                    NodeTree.UnIndent();
+                end;
             PeekNextLexeme("FS Keyword"::"if"):
-                ; // TODO CompileIfStatement = condition + statement/compoundstatement
+                Statement := CompileIfStatement(CompoundStatement);
             PeekNextLexeme("FS Keyword"::"repeat"):
                 ; // TODO CompileRepeatStatement
             PeekNextLexeme("FS Keyword"::"while"):
@@ -122,7 +216,7 @@ codeunit 81002 "FS Compiler"
             PeekNextLexeme("FS Keyword"::"foreach"):
                 ; // TODO CompileForeachStatement
             PeekNextLexeme("FS Lexeme Type"::Symbol):
-                CompileAssignmentStatement(CompoundStatement);
+                Statement := CompileAssignmentStatement(CompoundStatement);
             else
                 NoOp();
         end;
@@ -130,6 +224,36 @@ codeunit 81002 "FS Compiler"
 
     local procedure NoOp()
     begin
+    end;
+
+    local procedure CompileIfStatement(CompoundStatement: Integer) IfStatement: Integer
+    var
+        ConditionNode, TrueStatementNode, FalseStatementNode : Integer;
+    begin
+        AssertNextLexeme("FS Keyword"::"if");
+
+        IfStatement := NodeTree.InsertIfStatement(CompoundStatement);
+        ConditionNode := CompileBooleanExpression(IfStatement);
+
+        AssertNextLexeme("FS Keyword"::"then");
+
+        NodeTree.Indent();
+        TrueStatementNode := CompileStatement(IfStatement);
+        NodeTree.UnIndent();
+
+        if PeekNextLexeme("FS Keyword"::"else") then begin
+            AssertNextLexeme("FS Keyword"::"else");
+
+            NodeTree.Indent();
+            FalseStatementNode := CompileStatement(IfStatement);
+            NodeTree.UnIndent();
+        end;
+
+        NodeTree.UpdateIfStatement(
+            IfStatement,
+            ConditionNode,
+            TrueStatementNode,
+            FalseStatementNode);
     end;
 
     local procedure CompileForStatement(CompoundStatement: Integer)
@@ -140,19 +264,17 @@ codeunit 81002 "FS Compiler"
         // TODO compile expression
         AssertNextLexeme("FS Keyword"::"do");
 
-        CompileCompoundStatement(CompoundStatement);
+        CompileStatement(CompoundStatement);
     end;
 
-    local procedure CompileAssignmentStatement(CompoundStatement: Integer)
+    local procedure CompileAssignmentStatement(CompoundStatement: Integer) Assignment: Integer;
     var
         Lexeme: Record "FS Lexeme";
         Variable: Text[250];
-        Assignment: Integer;
         VariableType: Enum "FS Variable Type";
     begin
         Lexer.GetNextLexeme(Lexeme);
         Variable := Lexeme.Name;
-        // TODO check variable declaration 
 
         VariableType := NodeTree.ValidateVariable(Variable, 0); // FIXME 0 = main
 
@@ -176,31 +298,26 @@ codeunit 81002 "FS Compiler"
         Product: Integer;
     begin
         Product := CompileProduct(ParentNode);
-        // TODO while ?
 
         case true of
             PeekNextLexeme("FS Operator"::"+"):
                 begin
                     AssertNextLexeme("FS Operator"::"+");
-                    // TODO change Factor order/parent
                     Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"+");
-                    NodeTree.UpdateParent(Product, Expression);
                     CompileExpression(Expression);
                 end;
             PeekNextLexeme("FS Operator"::"-"):
                 begin
                     AssertNextLexeme("FS Operator"::"-");
-                    // TODO change Factor order/parent
                     Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"-");
-                    NodeTree.UpdateParent(Product, Expression);
                     CompileExpression(Expression);
                 end;
-            // TODO add "and" and "or" and "xor" ?
             else
                 Expression := Product;
         end;
 
         // TODO update indentation ?
+        NodeTree.UpdateParent(Product, Expression);
         NodeTree.UpdateOrderAndIndentation(Expression);
     end;
 
@@ -291,7 +408,9 @@ codeunit 81002 "FS Compiler"
         // TODO type check ! - ExpectedType
         // TODO type check ! - ExpectedType
         // TODO type check ! - ExpectedType
-        // TODO records/codeunits / functions ?
+        // TODO records / functions ?
+
+        // TODO check if function !
 
         case true of
             PeekNextLexeme("FS Operator"::"."):
@@ -310,7 +429,6 @@ codeunit 81002 "FS Compiler"
         Factor := CompileBooleanFactor(ParentNode);
 
         case true of
-            // FIXME change and/or/xor/not to operator
             // TODO repeated code
             PeekNextLexeme("FS Operator"::"and"):
                 begin
