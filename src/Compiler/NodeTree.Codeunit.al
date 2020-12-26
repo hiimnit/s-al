@@ -9,7 +9,7 @@ codeunit 81003 "FS Node Tree"
 
     procedure ShowNodeTree()
     var
-        NodeTreeView: page "FS Node Tree View";
+        NodeTreeView: Page "FS Node Tree View";
     begin
         NodeTreeView.SetRecords(TempNode, TempVariable);
         NodeTreeView.Run();
@@ -230,9 +230,9 @@ codeunit 81003 "FS Node Tree"
         Name: Text[250];
         Type: Enum "FS Variable Type";
         FunctionNo: Integer
-    )
+    ): Integer
     begin
-        InsertVariableDefinition(Scope, Name, Type, FunctionNo, 0);
+        exit(InsertVariableDefinition(Scope, Name, Type, FunctionNo, 0));
     end;
 
     procedure InsertVariableDefinition
@@ -242,7 +242,7 @@ codeunit 81003 "FS Node Tree"
         Type: Enum "FS Variable Type";
         FunctionNo: Integer;
         Length: Integer
-    )
+    ): Integer
     begin
         CheckVariableDefinition(Scope, FunctionNo, Name);
 
@@ -254,6 +254,8 @@ codeunit 81003 "FS Node Tree"
         TempVariable.Length := Length;
         TempVariable.Scope := Scope;
         TempVariable.Insert(true);
+
+        exit(TempVariable."Entry No.");
     end;
 
     local procedure CheckVariableDefinition
@@ -267,7 +269,13 @@ codeunit 81003 "FS Node Tree"
         AlreadyDefinedErr: Label 'Variable %1 is already defined.', Comment = '%1 = Variable name';
     begin
         TempVariableCopy.Copy(TempVariable, true);
-        TempVariableCopy.SetRange(Scope, Scope);
+        case Scope of
+            Scope::Global:
+                TempVariableCopy.SetRange(Scope, Scope);
+            Scope::Local,
+            Scope::Parameter:
+                TempVariableCopy.SetFilter(Scope, '%1|%2', Scope::Local, Scope::Parameter);
+        end;
         TempVariableCopy.SetRange("Function No.", FunctionNo);
         TempVariableCopy.SetRange(Name, Name);
         if not TempVariableCopy.IsEmpty() then

@@ -108,32 +108,34 @@ codeunit 81002 "FS Compiler"
         NodeTree.UnIndent();
     end;
 
-    local procedure CompileParameterDefinitionList(Function: Integer)
+    local procedure CompileParameterDefinitionList(FunctionNo: Integer)
     begin
         AssertNextLexeme("FS Operator"::"(");
         while not PeekNextLexeme("FS Operator"::")") do begin
-            // TODO parameter
-            ;
-            ;
+            CompileVariableDefinition(FunctionNo, "FS Variable Scope"::Parameter);
+            if not PeekNextLexeme("FS Operator"::")") then
+                AssertNextLexeme("FS Operator"::";");
         end;
         AssertNextLexeme("FS Operator"::")");
 
-        if PeekNextLexeme("FS Operator"::":") then begin
+        if PeekNextLexeme("FS Lexeme Type"::Symbol) or PeekNextLexeme("FS Operator"::":") then begin
             // TODO return type/variable declaration
             ;
             ;
         end;
     end;
 
-    local procedure CompileVariableDefinitionList(ParentNode: Integer; Scope: Enum "FS Variable Scope")
+    local procedure CompileVariableDefinitionList(FunctionNo: Integer; Scope: Enum "FS Variable Scope")
     begin
         AssertNextLexeme("FS Keyword"::"var");
 
-        while PeekNextLexeme("FS Lexeme Type"::"Symbol") do
-            CompileVariableDefinition(ParentNode, Scope);
+        while PeekNextLexeme("FS Lexeme Type"::"Symbol") do begin
+            CompileVariableDefinition(FunctionNo, Scope);
+            AssertNextLexeme("FS Operator"::";");
+        end;
     end;
 
-    local procedure CompileVariableDefinition(ParentNode: Integer; Scope: Enum "FS Variable Scope")
+    local procedure CompileVariableDefinition(FunctionNo: Integer; Scope: Enum "FS Variable Scope") VariableNo: Integer
     var
         Lexeme: Record "FS Lexeme";
         Name: Text[250];
@@ -171,14 +173,12 @@ codeunit 81002 "FS Compiler"
                 end;
         end;
 
-        NodeTree.InsertVariableDefinition(
+        VariableNo := NodeTree.InsertVariableDefinition(
             Scope,
             Name,
             Type,
-            ParentNode,
+            FunctionNo,
             Length);
-
-        AssertNextLexeme("FS Operator"::";");
     end;
 
     local procedure CompileCompoundStatement(ParentNode: Integer) CompoundStatement: Integer
@@ -424,9 +424,9 @@ codeunit 81002 "FS Compiler"
 
     local procedure CompileBooleanExpression(ParentNode: Integer) Expression: Integer
     var
-        Factor: Integer;
+        Comparison: Integer;
     begin
-        Factor := CompileBooleanFactor(ParentNode);
+        Comparison := CompileBooleanComparison(ParentNode);
 
         case true of
             // TODO repeated code
@@ -449,11 +449,62 @@ codeunit 81002 "FS Compiler"
                     CompileBooleanExpression(Expression);
                 end;
             else
-                Expression := Factor;
+                Expression := Comparison;
         end;
 
-        NodeTree.UpdateParent(Factor, Expression);
+        NodeTree.UpdateParent(Comparison, Expression);
         NodeTree.UpdateOrderAndIndentation(Expression);
+    end;
+
+    local procedure CompileBooleanComparison(ParentNode: Integer) Comparison: Integer
+    var
+        Factor: Integer;
+    begin
+        Factor := CompileBooleanFactor(ParentNode);
+
+        case true of
+            PeekNextLexeme("FS Operator"::"="):
+                begin
+                    AssertNextLexeme("FS Operator"::"and");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::"and");
+                    CompileBooleanFactor(Comparison);
+                end;
+            PeekNextLexeme("FS Operator"::">"):
+                begin
+                    AssertNextLexeme("FS Operator"::">");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::">");
+                    CompileBooleanFactor(Comparison);
+                end;
+            PeekNextLexeme("FS Operator"::"<"):
+                begin
+                    AssertNextLexeme("FS Operator"::"<");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::"<");
+                    CompileBooleanFactor(Comparison);
+                end;
+            PeekNextLexeme("FS Operator"::"<>"):
+                begin
+                    AssertNextLexeme("FS Operator"::"<>");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::"<>");
+                    CompileBooleanFactor(Comparison);
+                end;
+            PeekNextLexeme("FS Operator"::">="):
+                begin
+                    AssertNextLexeme("FS Operator"::">=");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::">=");
+                    CompileBooleanFactor(Comparison);
+                end;
+            PeekNextLexeme("FS Operator"::"<="):
+                begin
+                    AssertNextLexeme("FS Operator"::"<=");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::"<=");
+                    CompileBooleanFactor(Comparison);
+                end;
+            else
+                Factor := Comparison;
+        end;
+
+        NodeTree.UpdateParent(Factor, Comparison);
+        NodeTree.UpdateOrderAndIndentation(Comparison);
     end;
 
     local procedure CompileBooleanFactor(ParentNode: Integer) Factor: Integer

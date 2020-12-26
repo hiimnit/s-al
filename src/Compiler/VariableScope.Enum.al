@@ -11,4 +11,8 @@ enum 81005 "FS Variable Scope"
     {
         Caption = 'Global';
     }
+    value(20; Parameter)
+    {
+        Caption = 'Parameter';
+    }
 }
