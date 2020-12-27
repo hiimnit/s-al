@@ -8,7 +8,11 @@ codeunit 81000 "FS Lexer"
         LastLexeme: Boolean;
 
     procedure Analyze(NewCode: Text)
+    var
+        ProgressDialog: Dialog;
     begin
+        ProgressDialog.Open('Analysing...');
+
         Code := NewCode;
         CodeLength := StrLen(Code);
         Position := 1;
@@ -20,6 +24,8 @@ codeunit 81000 "FS Lexer"
             ParseNext();
 
         TempLexeme.FindFirst();
+
+        ProgressDialog.Close();
     end;
 
     procedure ShowLexemes()

@@ -32,7 +32,10 @@ codeunit 81002 "FS Compiler"
         OnRunDefined: Boolean;
         MultipleOnRunDefinitionsErr: Label 'Multiple OnRun definitions are not allowed.';
         OnRunNotDefinedErr: Label 'OnRun is not defined.';
+        ProgressDialog: Dialog;
     begin
+        ProgressDialog.Open('Compiling...');
+
         // TODO first scan code for all defined functions?
         OnRunDefined := false;
 
@@ -58,6 +61,8 @@ codeunit 81002 "FS Compiler"
 
         if not OnRunDefined then
             Error(OnRunNotDefinedErr);
+
+        ProgressDialog.Close();
     end;
 
     local procedure CompileOnRun()
@@ -646,9 +651,9 @@ codeunit 81002 "FS Compiler"
     local procedure AssertNextLexeme
     (
         LexemeType: Enum "FS Lexeme Type";
-        Keyword: Enum "FS Keyword";
-        Operator: Enum "FS Operator";
-        Name: Text
+                        Keyword: Enum "FS Keyword";
+                        Operator: Enum "FS Operator";
+                        Name: Text
     )
     var
         Lexeme: Record "FS Lexeme";
@@ -670,9 +675,9 @@ codeunit 81002 "FS Compiler"
     (
         Lexeme: Record "FS Lexeme";
         LexemeType: Enum "FS Lexeme Type";
-        Keyword: Enum "FS Keyword";
-        Operator: Enum "FS Operator";
-        Name: Text
+                        Keyword: Enum "FS Keyword";
+                        Operator: Enum "FS Operator";
+                        Name: Text
     )
     var
         UnexpectedLexemeErr: Label 'Unexpected lexeme %1, expected %2.', Comment = '%1 = got, %2 = expected';

@@ -21,9 +21,9 @@ enum 81003 "FS Node Type"
         Caption = 'Compound Statement';
     }
 
-    value(200; Assignment)
+    value(200; AssignmentStatement)
     {
-        Caption = 'Assignment';
+        Caption = 'Assignment Statement';
     }
 
     value(300; Expression)

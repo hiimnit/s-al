@@ -16,6 +16,27 @@ codeunit 81003 "FS Node Tree"
         NodeTreeView.Run();
     end;
 
+    procedure GetVariables(var VarTempVariable: Record "FS Variable" temporary)
+    begin
+        VarTempVariable.Copy(TempVariable, true);
+    end;
+
+    procedure GetNodes(var VarTempNode: Record "FS Node" temporary)
+    begin
+        VarTempNode.Copy(TempNode, true);
+    end;
+
+    procedure GetOnRun(var OnRun: Record "FS Function")
+    begin
+        GetFunction(OnRunFunctionNo(), OnRun);
+    end;
+
+    procedure GetFunction(FunctionNo: Integer; var Function: Record "FS Function")
+    begin
+        TempFunction.Get(FunctionNo);
+        Function := TempFunction;
+    end;
+
     local procedure InitTempNode(ParentNode: Integer)
     begin
         TempNode.Init();
