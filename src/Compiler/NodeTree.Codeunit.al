@@ -2,6 +2,7 @@ codeunit 81003 "FS Node Tree"
 {
     var
         TempNode: Record "FS Node" temporary;
+        TempFunction: Record "FS Function" temporary;
         TempVariable: Record "FS Variable" temporary;
         CurrentFunction: Integer;
         Order: Integer;
@@ -26,15 +27,52 @@ codeunit 81003 "FS Node Tree"
         TempNode.Indentation := Indentation;
     end;
 
+    local procedure OnRunFunctionNo(): Integer
+    begin
+        exit(-1);
+    end;
+
+    procedure InsertOnRun(Name: Text[250]): Integer
+    begin
+        exit(InsertFunction(Name, OnRunFunctionNo()));
+    end;
+
     procedure InsertFunction(Name: Text[250]): Integer
     begin
+        exit(InsertFunction(Name, 0));
+    end;
+
+    local procedure InsertFunction(Name: Text[250]; FunctionNo: Integer): Integer
+    begin
+        CheckFunctionDefinition(Name);
+
+        TempFunction.Init();
+        TempFunction."Entry No." := FunctionNo;
+        TempFunction.Name := Name;
+        // TODO return type and var name?
+        TempFunction.Insert(true);
+
+        CurrentFunction := TempFunction."Entry No.";
+
         InitTempNode(0);
         TempNode.Type := "FS Node Type"::Function;
         TempNode."Function Name" := Name;
+        TempNode."Function No." := CurrentFunction;
 
-        CurrentFunction := InsertTempNode();
+        InsertTempNode();
 
         exit(CurrentFunction);
+    end;
+
+    local procedure CheckFunctionDefinition(Name: Text[250])
+    var
+        TempFunctionCopy: Record "FS Function" temporary;
+        AlreadyDefinedErr: Label 'Function %1 is already defined.', Comment = '%1 = Function name';
+    begin
+        TempFunctionCopy.Copy(TempFunction, true);
+        TempFunctionCopy.SetRange(Name, Name);
+        if not TempFunctionCopy.IsEmpty() then
+            Error(AlreadyDefinedErr, Name);
     end;
 
     procedure InsertIfStatement(ParentNode: Integer): Integer

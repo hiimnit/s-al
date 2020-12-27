@@ -50,7 +50,7 @@ codeunit 81000 "FS Lexer"
     var
         NextChar: Text[1];
     begin
-        while IsWhiteSpace(PeekNext()) do
+        while not EOS() and IsWhiteSpace(PeekNext()) do
             ReadNext(); // consume whitespace
 
         NextChar := PeekNext();
@@ -101,7 +101,7 @@ codeunit 81000 "FS Lexer"
         c: Char;
     begin
         if Char = '' then
-            exit(true);
+            exit(false);
 
         Evaluate(c, Char);
         case c of

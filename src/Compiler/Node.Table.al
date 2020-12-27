@@ -114,9 +114,6 @@ table 81001 "FS Node"
                 AssignEntryNo(TempNode);
             end else
                 AssignEntryNo(Node);
-
-        if Rec.Type = Rec.Type::Function then
-            Rec."Function No." := Rec."Entry No.";
     end;
 
     local procedure AssignEntryNo(var Node: Record "FS Node")

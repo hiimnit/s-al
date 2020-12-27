@@ -16,6 +16,11 @@ codeunit 81002 "FS Compiler"
         NodeTree.ShowNodeTree();
     end;
 
+    procedure GetNodeTree(var VarNodeTree: Codeunit "FS Node Tree")
+    begin
+        VarNodeTree := NodeTree;
+    end;
+
     local procedure Analyze(Code: Text)
     begin
         Clear(Lexer);
@@ -67,7 +72,7 @@ codeunit 81002 "FS Compiler"
         AssertNextLexeme("FS Operator"::"(");
         AssertNextLexeme("FS Operator"::")");
 
-        Function := NodeTree.InsertFunction(OnRunFunctionTok);
+        Function := NodeTree.InsertOnRun(OnRunFunctionTok);
 
         if PeekNextLexeme("FS Keyword"::"var") then
             CompileVariableDefinitionList(Function, "FS Variable Scope"::Local);
@@ -129,7 +134,7 @@ codeunit 81002 "FS Compiler"
     begin
         AssertNextLexeme("FS Keyword"::"var");
 
-        while PeekNextLexeme("FS Lexeme Type"::"Symbol") do begin
+        while PeekNextLexeme("FS Lexeme Type"::"Symbol") do begin // FIXME does not work with Code: Code[20];
             CompileVariableDefinition(FunctionNo, Scope);
             AssertNextLexeme("FS Operator"::";");
         end;
@@ -684,7 +689,7 @@ codeunit 81002 "FS Compiler"
                 Error(UnexpectedLexemeErr, Lexeme.Operator, Operator);
 
         if Name <> '' then
-            if Lexeme.Name <> Name then
+            if Lexeme.Name.ToLower() <> Name.ToLower() then
                 Error(UnexpectedLexemeErr, Lexeme.Name, Name);
     end;
 }

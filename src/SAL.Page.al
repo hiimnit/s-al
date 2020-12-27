@@ -9,66 +9,33 @@ page 81001 "FS S/AL"
     {
         area(Content)
         {
-            group(GroupName)
+            usercontrol("FS Monaco Editor"; "FS Monaco Editor")
             {
-                group("Code")
-                {
-                    Caption = 'Code';
-
-                    field("FS Code"; Code)
-                    {
-                        ShowCaption = false;
-                        ApplicationArea = All;
-                        MultiLine = true;
-                    }
-                }
-            }
-        }
-    }
-
-    actions
-    {
-        area(Processing)
-        {
-            action(Analyze)
-            {
-                Caption = 'Analyze';
                 ApplicationArea = All;
-                ToolTip = 'Analyzes the code.';
-                Image = AnalysisView;
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedOnly = true;
 
-                trigger OnAction()
+                trigger Analyze(Code: Text)
                 var
                     Lexer: Codeunit "FS Lexer";
                 begin
                     Lexer.Analyze(Code);
                     Lexer.ShowLexemes();
                 end;
-            }
-            action(Compile)
-            {
-                Caption = 'Compile';
-                ApplicationArea = All;
-                ToolTip = 'Analyzes and compiles the code.';
-                Image = CompleteLine;
-                Promoted = true;
-                PromotedCategory = Process;
-                PromotedOnly = true;
 
-                trigger OnAction()
+                trigger Compile(Code: Text)
                 var
                     Compiler: Codeunit "FS Compiler";
                 begin
                     Compiler.Compile(Code);
                     Compiler.ShowNodeTree();
                 end;
+
+                trigger Execute(Code: Text)
+                var
+                    Interpreter: Codeunit "FS Interpreter";
+                begin
+                    Interpreter.Execute(Code);
+                end;
             }
         }
     }
-
-    var
-        Code: Text;
 }

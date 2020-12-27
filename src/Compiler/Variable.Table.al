@@ -27,6 +27,11 @@ table 81002 "FS Variable"
             Caption = 'Type';
             DataClassification = SystemMetadata;
         }
+        field(5; Reference; Boolean)
+        {
+            Caption = 'Reference';
+            DataClassification = SystemMetadata;
+        }
         field(10; Scope; Enum "FS Variable Scope")
         {
             Caption = 'Scope';
