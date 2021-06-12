@@ -72,7 +72,7 @@ codeunit 81007 "FS Variable"
             "FS Variable Type"::text:
                 Text := Value;
             "FS Variable Type"::code:
-                Text := Value;
+                Text := UpperCase(Value);
             "FS Variable Type"::decimal:
                 Decimal := Value;
             "FS Variable Type"::integer:
@@ -89,19 +89,40 @@ codeunit 81007 "FS Variable"
     )
     var
         LeftValue, RightValue : Variant;
-        LeftValueDecimal, RightValueDecimal : Decimal;
     begin
-        // TODO 
-
         Left.GetValue(LeftValue);
         Right.GetValue(RightValue);
 
         Setup('', Left.GetType(), 0);
 
-        LeftValueDecimal := LeftValue;
-        RightValueDecimal := RightValue;
+        case Type of
+            Type::integer,
+            Type::decimal:
+                AddDecimals(LeftValue, RightValue);
+            Type::text,
+            Type::code:
+                AddTexts(LeftValue, RightValue);
+            else
+                Error('Can not add %1', Type);
+        end
+    end;
 
-        SetValue(LeftValueDecimal + RightValueDecimal);
+    local procedure AddDecimals
+    (
+        Left: Decimal;
+        Right: Decimal
+    )
+    begin
+        SetValue(Left + Right);
+    end;
+
+    local procedure AddTexts
+    (
+        Left: Text;
+        Right: Text
+    )
+    begin
+        SetValue(Left + Right);
     end;
 
     procedure Subtract

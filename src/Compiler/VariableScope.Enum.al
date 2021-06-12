@@ -1,7 +1,7 @@
 
 enum 81005 "FS Variable Scope"
 {
-    // XXX 6.0 Caption = 'Variable Scope';
+    Caption = 'Variable Scope';
 
     value(0; Local)
     {

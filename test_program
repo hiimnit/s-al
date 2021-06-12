@@ -1,13 +1,17 @@
 local procedure test()
 begin
-
+    begin
+    end;
 end;
 
 trigger OnRun()
 var
     a: Decimal;
+    x: Boolean;
+    b: Text;
 begin
-    a := 10;
+    b := '123' + '123' + 'w123';
+    x := false;
     a := 1 / (a - 1) * 33 - test() - 1 - 3;
     test();
 end;

@@ -216,7 +216,6 @@ codeunit 81002 "FS Compiler"
                 begin
                     NodeTree.Indent();
                     Statement := CompileCompoundStatement(CompoundStatement);
-                    AssertNextLexeme("FS Operator"::";");
                     NodeTree.UnIndent();
                 end;
             PeekNextLexeme("FS Keyword"::"if"):
@@ -305,24 +304,29 @@ codeunit 81002 "FS Compiler"
     begin
         Variable := Lexeme.Name;
 
-        VariableType := NodeTree.ValidateVariable(Variable, 0); // FIXME 0 = main
+        VariableType := NodeTree.ValidateVariable(Variable);
 
         AssertNextLexeme("FS Operator"::":=");
 
         Assignment := NodeTree.InsertAssignment(CompoundStatement, Variable); // TODO add expression entry no.?
 
+        CompileExpression(Assignment, VariableType);
+    end;
+
+    local procedure CompileExpression(ParentNode: Integer; VariableType: Enum "FS Variable Type") Expression: Integer
+    begin
         case VariableType of
             "FS Variable Type"::boolean:
-                CompileBooleanExpression(Assignment);
+                Expression := CompileBooleanExpression(ParentNode);
             "FS Variable Type"::text,
             "FS Variable Type"::code:
-                CompileStringExpression(Assignment);
+                Expression := CompileStringExpression(ParentNode);
             else
-                CompileExpression(Assignment);
+                Expression := CompileNumericExpression(ParentNode);
         end;
     end;
 
-    local procedure CompileExpression(ParentNode: Integer) Expression: Integer
+    local procedure CompileNumericExpression(ParentNode: Integer) Expression: Integer
     var
         Product: Integer;
     begin
@@ -401,7 +405,7 @@ codeunit 81002 "FS Compiler"
             PeekNextLexeme("FS Operator"::"("):
                 begin
                     AssertNextLexeme("FS Operator"::"(");
-                    Factor := CompileExpression(ParentNode);
+                    Factor := CompileNumericExpression(ParentNode);
                     AssertNextLexeme("FS Operator"::")");
                 end;
             PeekNextLexeme("FS Lexeme Type"::Integer),
@@ -451,10 +455,8 @@ codeunit 81002 "FS Compiler"
         Lexer.GetNextLexeme(Lexeme);
         // TODO type check ! - ExpectedType
         // TODO type check ! - ExpectedType
-        // TODO type check ! - ExpectedType
+        // FIXME type check ! - ExpectedType
         // TODO records / functions ?
-
-        // TODO check if function !
 
         case true of
             PeekNextLexeme("FS Operator"::"."):
@@ -472,12 +474,15 @@ codeunit 81002 "FS Compiler"
     local procedure CompileFunctionCall(ParentNode: Integer; Lexeme: Record "FS Lexeme") FunctionCall: Integer
     begin
         // FIXME validate function name 
-
-        AssertNextLexeme("FS Operator"::"(");
-        // TODO parameters 
-        AssertNextLexeme("FS Operator"::")");
-
         FunctionCall := NodeTree.InsertFunctionCall(ParentNode, Lexeme.Name);
+
+        AssertNextLexeme(Enum::"FS Operator"::"(");
+        while not PeekNextLexeme(Enum::"FS Operator"::")") do begin
+            CompileExpression(FunctionCall, Enum::"FS Variable Type"::decimal); // TODO type!
+            if PeekNextLexeme(Enum::"FS Operator"::"comma") then
+                AssertNextLexeme(Enum::"FS Operator"::"comma");
+        end;
+        AssertNextLexeme(Enum::"FS Operator"::")");
     end;
 
     local procedure CompileBooleanExpression(ParentNode: Integer) Expression: Integer
@@ -486,32 +491,45 @@ codeunit 81002 "FS Compiler"
     begin
         Comparison := CompileBooleanComparison(ParentNode);
 
-        case true of
-            // TODO repeated code
-            PeekNextLexeme("FS Operator"::"and"):
-                begin
-                    AssertNextLexeme("FS Operator"::"and");
-                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"and");
-                    CompileBooleanExpression(Expression);
-                end;
-            PeekNextLexeme("FS Operator"::"or"):
-                begin
-                    AssertNextLexeme("FS Operator"::"or");
-                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"or");
-                    CompileBooleanExpression(Expression);
-                end;
-            PeekNextLexeme("FS Operator"::"xor"):
-                begin
-                    AssertNextLexeme("FS Operator"::"xor");
-                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"xor");
-                    CompileBooleanExpression(Expression);
-                end;
-            else
-                Expression := Comparison;
-        end;
+        while true do
+            case true of
+                // TODO repeated code
+                PeekNextLexeme("FS Operator"::"and"):
+                    begin
+                        AssertNextLexeme("FS Operator"::"and");
 
-        NodeTree.UpdateParent(Comparison, Expression);
-        NodeTree.UpdateOrderAndIndentation(Expression);
+                        Expression := NodeTree.InsertOperation(ParentNode, Enum::"FS Operator"::"and");
+                        NodeTree.UpdateParent(Comparison, Expression);
+                        CompileBooleanComparison(Expression);
+
+                        Comparison := Expression;
+                    end;
+                PeekNextLexeme("FS Operator"::"or"):
+                    begin
+                        AssertNextLexeme("FS Operator"::"or");
+
+                        Expression := NodeTree.InsertOperation(ParentNode, Enum::"FS Operator"::"or");
+                        NodeTree.UpdateParent(Comparison, Expression);
+                        CompileBooleanComparison(Expression);
+
+                        Comparison := Expression;
+                    end;
+                PeekNextLexeme("FS Operator"::"xor"):
+                    begin
+                        AssertNextLexeme("FS Operator"::"xor");
+
+                        Expression := NodeTree.InsertOperation(ParentNode, Enum::"FS Operator"::"xor");
+                        NodeTree.UpdateParent(Comparison, Expression);
+                        CompileBooleanComparison(Expression);
+
+                        Comparison := Expression;
+                    end;
+                else
+                    Expression := Comparison;
+                    NodeTree.UpdateOrderAndIndentation(Expression);
+                    exit;
+            end;
+
     end;
 
     local procedure CompileBooleanComparison(ParentNode: Integer) Comparison: Integer
@@ -523,8 +541,8 @@ codeunit 81002 "FS Compiler"
         case true of
             PeekNextLexeme("FS Operator"::"="):
                 begin
-                    AssertNextLexeme("FS Operator"::"and");
-                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::"and");
+                    AssertNextLexeme("FS Operator"::"=");
+                    Comparison := NodeTree.InsertOperation(ParentNode, "FS Operator"::"=");
                     CompileBooleanFactor(Comparison);
                 end;
             PeekNextLexeme("FS Operator"::">"):
@@ -558,11 +576,11 @@ codeunit 81002 "FS Compiler"
                     CompileBooleanFactor(Comparison);
                 end;
             else
-                Factor := Comparison;
+                Comparison := Factor;
         end;
 
         NodeTree.UpdateParent(Factor, Comparison);
-        NodeTree.UpdateOrderAndIndentation(Comparison);
+        NodeTree.UpdateOrderAndIndentation(Comparison); // TODO ?
     end;
 
     local procedure CompileBooleanFactor(ParentNode: Integer) Factor: Integer
@@ -580,6 +598,7 @@ codeunit 81002 "FS Compiler"
                 Factor := CompileBooleanValue(ParentNode);
             PeekNextLexeme("FS Lexeme Type"::Symbol):
                 Factor := CompileSymbol(ParentNode, "FS Variable Type"::"boolean");
+            // TODO non boolean constant values
             else
                 Error('TODO'); // TODO error message
         end;
@@ -609,19 +628,24 @@ codeunit 81002 "FS Compiler"
     begin
         Factor := CompileStringFactor(ParentNode);
 
-        case true of
-            PeekNextLexeme("FS Operator"::"+"):
-                begin
-                    AssertNextLexeme("FS Operator"::"+");
-                    Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"+"); // XXX add type ?
-                    CompileStringExpression(Expression);
-                end;
-            else
-                Expression := Factor;
-        end;
+        while true do
+            case true of
+                PeekNextLexeme("FS Operator"::"+"):
+                    begin
+                        AssertNextLexeme("FS Operator"::"+");
 
-        NodeTree.UpdateParent(Factor, Expression);
-        NodeTree.UpdateOrderAndIndentation(Expression);
+                        Expression := NodeTree.InsertOperation(ParentNode, "FS Operator"::"+");
+                        NodeTree.UpdateParent(Factor, Expression);
+                        CompileStringFactor(Expression);
+
+                        Factor := Expression;
+                    end;
+                // XXX add "*" operator for text? 
+                else
+                    Expression := Factor;
+                    NodeTree.UpdateOrderAndIndentation(Expression);
+                    exit;
+            end;
     end;
 
     local procedure CompileStringFactor(ParentNode: Integer) Factor: Integer
@@ -699,9 +723,9 @@ codeunit 81002 "FS Compiler"
     local procedure AssertNextLexeme
     (
         LexemeType: Enum "FS Lexeme Type";
-                        Keyword: Enum "FS Keyword";
-                        Operator: Enum "FS Operator";
-                        Name: Text
+        Keyword: Enum "FS Keyword";
+        Operator: Enum "FS Operator";
+        Name: Text
     )
     var
         Lexeme: Record "FS Lexeme";
@@ -723,9 +747,9 @@ codeunit 81002 "FS Compiler"
     (
         Lexeme: Record "FS Lexeme";
         LexemeType: Enum "FS Lexeme Type";
-                        Keyword: Enum "FS Keyword";
-                        Operator: Enum "FS Operator";
-                        Name: Text
+        Keyword: Enum "FS Keyword";
+        Operator: Enum "FS Operator";
+        Name: Text
     )
     var
         UnexpectedLexemeErr: Label 'Unexpected lexeme %1, expected %2.', Comment = '%1 = got, %2 = expected';

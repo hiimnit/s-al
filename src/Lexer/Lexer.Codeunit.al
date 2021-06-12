@@ -261,7 +261,10 @@ codeunit 81000 "FS Lexer"
         if Index = 0 then
             Index := Operator.Names().IndexOf(Char);
 
-        Operator := "FS Operator".FromInteger("FS Operator".Ordinals().Get(Index));
+        if (Index = 0) and (Char = ',') then
+            Operator := Enum::"FS Operator"::comma
+        else
+            Operator := "FS Operator".FromInteger("FS Operator".Ordinals().Get(Index));
 
         if Operator.AsInteger() >= 1000 then // two char operator ids are 1000+
             ReadNext(); // consume second part of the operator
@@ -272,7 +275,7 @@ codeunit 81000 "FS Lexer"
     local procedure IsOperator(Char: Text[1]): Boolean
     begin
         // XXX boolean operator behaviour?
-        exit("FS Operator".Names().Contains(Char));
+        exit("FS Operator".Names().Contains(Char) or (Char = ','));
     end;
 
     local procedure IsBooleanValue(Symbol: Text): Boolean

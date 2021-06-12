@@ -54,7 +54,7 @@ codeunit 81003 "FS Node Tree"
         TempNode.Indentation := Indentation;
     end;
 
-    local procedure OnRunFunctionNo(): Integer
+    procedure OnRunFunctionNo(): Integer
     begin
         exit(-1);
     end;
@@ -130,7 +130,7 @@ codeunit 81003 "FS Node Tree"
     procedure InsertCompoundStatement(ParentNode: Integer): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::CompoundStatement;
+        TempNode.Type := Enum::"FS Node Type"::CompoundStatement;
 
         exit(InsertTempNode());
     end;
@@ -142,7 +142,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::AssignmentStatement; // FIXME ?
+        TempNode.Type := Enum::"FS Node Type"::AssignmentStatement; // FIXME ?
         TempNode."Variable Name" := Name;
 
         exit(InsertTempNode());
@@ -155,7 +155,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::Operation;
+        TempNode.Type := Enum::"FS Node Type"::Operation;
         TempNode.Operator := Operation;
 
         exit(InsertTempNode());
@@ -168,7 +168,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::UnaryOperator;
+        TempNode.Type := Enum::"FS Node Type"::UnaryOperator;
         TempNode.Operator := Operator;
 
         exit(InsertTempNode());
@@ -181,7 +181,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::NumericValue;
+        TempNode.Type := Enum::"FS Node Type"::NumericValue;
         TempNode."Numeric Value" := Value;
 
         exit(InsertTempNode());
@@ -194,7 +194,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::BooleanValue;
+        TempNode.Type := Enum::"FS Node Type"::BooleanValue;
         TempNode."Boolean Value" := Value;
 
         exit(InsertTempNode());
@@ -207,7 +207,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::BooleanValue;
+        TempNode.Type := Enum::"FS Node Type"::TextValue;
         TempNode.SetTextValue(Value);
 
         exit(InsertTempNode());
@@ -220,7 +220,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::Variable;
+        TempNode.Type := Enum::"FS Node Type"::Variable;
         TempNode."Variable Name" := Name;
 
         exit(InsertTempNode());
@@ -234,7 +234,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::FunctionCall;
+        TempNode.Type := Enum::"FS Node Type"::FunctionCall;
         TempNode."Variable Name" := Name;
 
         exit(InsertTempNode());
@@ -363,11 +363,7 @@ codeunit 81003 "FS Node Tree"
             Error(AlreadyDefinedErr, Name);
     end;
 
-    procedure ValidateVariable
-    (
-        Name: Text[250];
-        ParentNode: Integer // TODO rename
-    ) VariableType: Enum "FS Variable Type"
+    procedure ValidateVariable(Name: Text[250]) VariableType: Enum "FS Variable Type"
     var
         TempVariableCopy: Record "FS Variable" temporary;
     begin
@@ -375,8 +371,10 @@ codeunit 81003 "FS Node Tree"
 
         TempVariableCopy.SetRange(Name, Name);
         TempVariableCopy.SetRange(Scope, TempVariableCopy.Scope::Local);
+        TempVariableCopy.SetRange("Function No.", CurrentFunction);
         if not TempVariableCopy.FindFirst() then begin
             TempVariableCopy.SetRange(Scope, TempVariableCopy.Scope::Global);
+            TempVariableCopy.SetRange("Function No.");
             if not TempVariableCopy.FindFirst() then
                 Error('Unknown variable %1.', Name);
         end;

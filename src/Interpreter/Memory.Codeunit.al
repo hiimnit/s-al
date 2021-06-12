@@ -28,7 +28,7 @@ codeunit 81005 "FS Memory"
             until TempVariable.Next() = 0;
     end;
 
-    local procedure AddVariable(Variable: Record "FS Variable")
+    procedure AddVariable(Variable: Record "FS Variable")
     var
         i: Integer;
     begin
@@ -89,5 +89,12 @@ codeunit 81005 "FS Memory"
 
         NewValue.GetValue(Value);
         Variables[VariableMapping.Get(Name.ToLower())].SetValue(Value);
+    end;
+
+    procedure SetParameter(Variable: Record "FS Variable"; var Value: Codeunit "FS Variable")
+    var
+    begin
+        Stack[StackCount + 1].AddVariable(Variable);
+        Stack[StackCount + 1].SetVariable(Variable.Name, Value);
     end;
 }

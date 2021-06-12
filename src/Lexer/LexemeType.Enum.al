@@ -1,6 +1,6 @@
 enum 81000 "FS Lexeme Type"
 {
-    // XXX 6.0 Caption = 'Lexeme Type';
+    Caption = 'Lexeme Type';
 
     // table names ?
 

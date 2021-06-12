@@ -1,6 +1,6 @@
 enum 81004 "FS Variable Type"
 {
-    // XXX 6.0 Caption = 'Variable Type';
+    Caption = 'Variable Type';
 
     // all types here must be lowercase
 

@@ -1,6 +1,6 @@
 enum 81003 "FS Node Type"
 {
-    // XXX 6.0 Caption = 'Node Type';
+    Caption = 'Node Type';
 
     value(0; Pass)
     {

@@ -36,6 +36,7 @@ page 81002 "FS Node Tree View"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the operator.';
                 }
+                // TODO combine value fields?
                 field("Numeric Value"; Rec."Numeric Value")
                 {
                     ApplicationArea = All;
@@ -46,15 +47,28 @@ page 81002 "FS Node Tree View"
                     ApplicationArea = All;
                     ToolTip = 'Specifies the variable name.';
                 }
+                field("Text Value"; Rec.GetTextValue())
+                {
+                    Caption = 'Text Value';
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the text value.';
+                }
+                field("Boolean Value"; Rec."Boolean Value")
+                {
+                    ApplicationArea = All;
+                    ToolTip = 'Specifies the boolean value.';
+                }
                 field("Entry No."; Rec."Entry No.")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the entry number.';
+                    Visible = false;
                 }
                 field("Parent Entry No."; Rec."Parent Entry No.")
                 {
                     ApplicationArea = All;
                     ToolTip = 'Specifies the entry parent entry number.';
+                    Visible = false;
                 }
             }
         }

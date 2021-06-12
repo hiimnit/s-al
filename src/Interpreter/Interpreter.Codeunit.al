@@ -22,6 +22,7 @@ codeunit 81004 "FS Interpreter"
     local procedure ExecuteScript()
     var
         OnRun: Record "FS Function";
+        TempNode: Record "FS Node" temporary;
         ProgressDialog: Dialog;
     begin
         ProgressDialog.Open('Executing...');
@@ -32,7 +33,8 @@ codeunit 81004 "FS Interpreter"
         // 1. find + execute OnRun()
         // 2.
         NodeTree.GetOnRun(OnRun);
-        ExecuteFunction(OnRun);
+        NodeTree.GetNodes(TempNode);
+        ExecuteFunction(OnRun, TempNode);
 
         ProgressDialog.Close();
     end;
@@ -64,6 +66,10 @@ codeunit 81004 "FS Interpreter"
                 Result := SetNumericValue(TempNode);
             "FS Node Type"::TextValue:
                 Result := SetTextValue(TempNode);
+            "FS Node Type"::BooleanValue:
+                Result := SetBooleanValue(TempNode);
+            else
+                Error('TODO');
         end;
 
         exit(Result);
@@ -75,23 +81,44 @@ codeunit 81004 "FS Interpreter"
         Result: Codeunit "FS Variable";
     begin
         NodeTree.GetFunction(TempFunctionNode."Variable Name", Function);
-        Result := ExecuteFunction(Function);
+        Result := ExecuteFunction(Function, TempFunctionNode);
         exit(Result);
     end;
 
-    local procedure ExecuteFunction(Function: Record "FS Function"): Codeunit "FS Variable"
+    local procedure ExecuteFunction(Function: Record "FS Function"; var TempFunctionNode: Record "FS Node" temporary): Codeunit "FS Variable"
     var
         TempVariable: Record "FS Variable" temporary;
-        TempNode: Record "FS Node" temporary;
+        TempNode, TempParameterExpressionNode : Record "FS Node" temporary;
         Result: Codeunit "FS Variable";
+
+        ParameterMismatchErr: Label 'Can not call function %1.\\Reason: Parameter count mismatch.', Comment = '%1 = function name';
     begin
         // TODO built-ins?
 
-        NodeTree.GetNodes(TempNode);
+        TempNode.Copy(TempFunctionNode, true);
+        TempNode.Reset();
         // find function entry point
         TempNode.SetRange(Type, TempNode.Type::Function);
         TempNode.SetRange("Function No.", Function."Entry No.");
         TempNode.FindFirst();
+
+        NodeTree.GetVariables(TempVariable); // TODO get already filtered for function?
+        TempVariable.SetRange(Scope, TempVariable.Scope::Parameter);
+        TempVariable.SetRange("Function No.", Function."Entry No.");
+        if TempVariable.FindSet() then begin
+            TempParameterExpressionNode.Copy(TempFunctionNode);
+            TempParameterExpressionNode.Reset();
+            TempParameterExpressionNode.SetRange("Parent Entry No.", TempFunctionNode."Entry No.");
+            TempParameterExpressionNode.FindSet(); // TODO checks
+
+            if TempVariable.Count() <> TempParameterExpressionNode.Count() then
+                Error(ParameterMismatchErr, Function.Name);
+
+            repeat
+                Result := ExecuteNode(TempParameterExpressionNode);
+                Memory.SetParameter(TempVariable, Result);
+            until (TempVariable.Next() = 0) or (TempParameterExpressionNode.Next() = 0);
+        end;
 
         NodeTree.GetVariables(TempVariable); // TODO get already filtered for function?
         TempVariable.SetRange(Scope, TempVariable.Scope::Local);
@@ -197,6 +224,15 @@ codeunit 81004 "FS Interpreter"
     begin
         Result.Setup('', Enum::"FS Variable Type"::text, 0); // XXX text?
         Result.SetValue(TempVariableNode.GetTextValue());
+        exit(Result);
+    end;
+
+    local procedure SetBooleanValue(var TempVariableNode: Record "FS Node" temporary): Codeunit "FS Variable"
+    var
+        Result: Codeunit "FS Variable";
+    begin
+        Result.Setup('', Enum::"FS Variable Type"::boolean, 0);
+        Result.SetValue(TempVariableNode."Boolean Value");
         exit(Result);
     end;
 }
