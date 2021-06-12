@@ -64,7 +64,7 @@ page 81002 "FS Node Tree View"
             {
                 Caption = 'Local Variables';
                 ApplicationArea = All;
-                SubPageLink = "Function No." = field("Function No."); // XXX not visible on "Function" line
+                SubPageLink = "Function No." = field("Function No.");
             }
             part(GlobalVariables; "FS Variables")
             {

@@ -7,8 +7,8 @@ codeunit 81006 "FS Call Memory"
 
     procedure InitMemory
     (
-        var Parameter: Record "FS Variable" temporary;
-        var ParameterValue: array[256] of Codeunit "FS Variable"; // TODO ? how to send value?
+        // FIXME var Parameter: Record "FS Variable" temporary;
+        // FIXME var ParameterValue: array[256] of Codeunit "FS Variable"; // TODO ? how to send value?
         var TempVariable: Record "FS Variable" temporary
     )
     begin
@@ -40,6 +40,6 @@ codeunit 81006 "FS Call Memory"
         i := VariableCount;
 
         VariableMapping.Add(Parameter."Entry No.", i);
-        Variables[i] := ''; // TODO ? how to send value?
+        // Variables[i] := ''; // TODO ? how to send value?
     end;
 }

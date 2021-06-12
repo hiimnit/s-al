@@ -13,7 +13,7 @@
   "logo": "./res/ArtexLogo.png",
   "dependencies": [],
   "screenshots": [],
-  "platform": "16.0.0.0",
+  "platform": "18.0.0.0",
   "idRanges": [
     {
       "from": 81000,
@@ -25,5 +25,5 @@
     "TranslationFile"
   ],
   "showMyCode": true,
-  "runtime": "5.0"
+  "runtime": "7.0"
 }

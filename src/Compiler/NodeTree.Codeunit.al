@@ -4,6 +4,7 @@ codeunit 81003 "FS Node Tree"
         TempNode: Record "FS Node" temporary;
         TempFunction: Record "FS Function" temporary;
         TempVariable: Record "FS Variable" temporary;
+        FunctionMapping: Dictionary of [Text, Integer];
         CurrentFunction: Integer;
         Order: Integer;
         Indentation: Integer;
@@ -31,6 +32,11 @@ codeunit 81003 "FS Node Tree"
         GetFunction(OnRunFunctionNo(), OnRun);
     end;
 
+    procedure GetFunction(FunctionName: Text; var Function: Record "FS Function")
+    begin
+        GetFunction(FunctionMapping.Get(FunctionName.ToLower()), Function);
+    end;
+
     procedure GetFunction(FunctionNo: Integer; var Function: Record "FS Function")
     begin
         TempFunction.Get(FunctionNo);
@@ -53,17 +59,19 @@ codeunit 81003 "FS Node Tree"
         exit(-1);
     end;
 
-    procedure InsertOnRun(Name: Text[250]): Integer
+    procedure InsertOnRun(Name: Text[250]; var FunctionNo: Integer): Integer
     begin
-        exit(InsertFunction(Name, OnRunFunctionNo()));
+        FunctionNo := OnRunFunctionNo();
+        exit(InsertFunctionLocal(Name, FunctionNo));
     end;
 
-    procedure InsertFunction(Name: Text[250]): Integer
+    procedure InsertFunction(Name: Text[250]; var FunctionNo: Integer): Integer
     begin
-        exit(InsertFunction(Name, 0));
+        FunctionNo := 0;
+        exit(InsertFunctionLocal(Name, FunctionNo));
     end;
 
-    local procedure InsertFunction(Name: Text[250]; FunctionNo: Integer): Integer
+    local procedure InsertFunctionLocal(Name: Text[250]; var FunctionNo: Integer) FunctionNode: Integer
     begin
         CheckFunctionDefinition(Name);
 
@@ -74,15 +82,15 @@ codeunit 81003 "FS Node Tree"
         TempFunction.Insert(true);
 
         CurrentFunction := TempFunction."Entry No.";
+        FunctionMapping.Add(Name.ToLower(), CurrentFunction);
 
         InitTempNode(0);
         TempNode.Type := "FS Node Type"::Function;
         TempNode."Function Name" := Name;
         TempNode."Function No." := CurrentFunction;
 
-        InsertTempNode();
-
-        exit(CurrentFunction);
+        FunctionNo := CurrentFunction;
+        FunctionNode := InsertTempNode();
     end;
 
     local procedure CheckFunctionDefinition(Name: Text[250])
@@ -134,7 +142,7 @@ codeunit 81003 "FS Node Tree"
     ): Integer
     begin
         InitTempNode(ParentNode);
-        TempNode.Type := "FS Node Type"::Assignment;
+        TempNode.Type := "FS Node Type"::AssignmentStatement; // FIXME ?
         TempNode."Variable Name" := Name;
 
         exit(InsertTempNode());
@@ -213,6 +221,20 @@ codeunit 81003 "FS Node Tree"
     begin
         InitTempNode(ParentNode);
         TempNode.Type := "FS Node Type"::Variable;
+        TempNode."Variable Name" := Name;
+
+        exit(InsertTempNode());
+    end;
+
+    procedure InsertFunctionCall
+    (
+        ParentNode: Integer;
+        Name: Text[100]
+    // TODO add parameters
+    ): Integer
+    begin
+        InitTempNode(ParentNode);
+        TempNode.Type := "FS Node Type"::FunctionCall;
         TempNode."Variable Name" := Name;
 
         exit(InsertTempNode());

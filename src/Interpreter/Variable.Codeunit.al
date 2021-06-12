@@ -19,6 +19,11 @@ codeunit 81007 "FS Variable"
         Length := NewLength;
     end;
 
+    procedure GetType(): Enum "FS Variable Type";
+    begin
+        exit(Type);
+    end;
+
     procedure Copy(var Variable: Codeunit "FS Variable")
     begin
         Clear(Variable);
@@ -75,5 +80,93 @@ codeunit 81007 "FS Variable"
             "FS Variable Type"::boolean:
                 Boolean := Value;
         end;
+    end;
+
+    procedure Add
+    (
+        var Left: Codeunit "FS Variable";
+        var Right: Codeunit "FS Variable"
+    )
+    var
+        LeftValue, RightValue : Variant;
+        LeftValueDecimal, RightValueDecimal : Decimal;
+    begin
+        // TODO 
+
+        Left.GetValue(LeftValue);
+        Right.GetValue(RightValue);
+
+        Setup('', Left.GetType(), 0);
+
+        LeftValueDecimal := LeftValue;
+        RightValueDecimal := RightValue;
+
+        SetValue(LeftValueDecimal + RightValueDecimal);
+    end;
+
+    procedure Subtract
+    (
+        var Left: Codeunit "FS Variable";
+        var Right: Codeunit "FS Variable"
+    )
+    var
+        LeftValue, RightValue : Variant;
+        LeftValueDecimal, RightValueDecimal : Decimal;
+    begin
+        // TODO 
+
+        Left.GetValue(LeftValue);
+        Right.GetValue(RightValue);
+
+        Setup('', Left.GetType(), 0);
+
+        LeftValueDecimal := LeftValue;
+        RightValueDecimal := RightValue;
+
+        SetValue(LeftValueDecimal - RightValueDecimal);
+    end;
+
+    procedure Multiply
+    (
+        var Left: Codeunit "FS Variable";
+        var Right: Codeunit "FS Variable"
+    )
+    var
+        LeftValue, RightValue : Variant;
+        LeftValueDecimal, RightValueDecimal : Decimal;
+    begin
+        // TODO 
+
+        Left.GetValue(LeftValue);
+        Right.GetValue(RightValue);
+
+        Setup('', Left.GetType(), 0);
+
+        LeftValueDecimal := LeftValue;
+        RightValueDecimal := RightValue;
+
+        SetValue(LeftValueDecimal * RightValueDecimal);
+    end;
+
+    procedure Divide
+    (
+        var Left: Codeunit "FS Variable";
+        var Right: Codeunit "FS Variable"
+    )
+    var
+        LeftValue, RightValue : Variant;
+        LeftValueDecimal, RightValueDecimal : Decimal;
+    begin
+        // TODO 
+
+        Left.GetValue(LeftValue);
+        Right.GetValue(RightValue);
+
+        Setup('', Left.GetType(), 0);
+
+        LeftValueDecimal := LeftValue;
+        RightValueDecimal := RightValue;
+
+        SetValue(LeftValueDecimal / RightValueDecimal); // TODO check non-zero
     end;
 }

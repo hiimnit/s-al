@@ -54,4 +54,8 @@ enum 81003 "FS Node Type"
     {
         Caption = 'Operation';
     }
+    value(307; FunctionCall)
+    {
+        Caption = 'Function Call';
+    }
 }
