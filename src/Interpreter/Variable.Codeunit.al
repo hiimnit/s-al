@@ -5,18 +5,39 @@ codeunit 81007 "FS Variable"
         Name: Text[250];
         Type: Enum "FS Variable Type";
         Length: Integer;
+        ObjectId: Integer;
 
     var
+        RecordRef: RecordRef;
         Text: Text;
         Decimal: Decimal;
         Integer: Integer;
         Boolean: Boolean;
 
-    procedure Setup(NewName: Text[250]; NewType: Enum "FS Variable Type"; NewLength: Integer)
+    procedure Setup(NewType: Enum "FS Variable Type")
+    begin
+        Setup('', NewType, 0, 0);
+    end;
+
+    procedure Setup(NewName: Text[250]; NewType: Enum "FS Variable Type"; NewLength: Integer; ObjectId: Integer)
     begin
         Name := NewName;
         Type := NewType;
         Length := NewLength;
+        ObjectId := ObjectId;
+
+        if Type = Enum::"FS Variable Type"::record then
+            RecordRef.Open(ObjectId);
+    end;
+
+    procedure GetName(): Text[250]
+    begin
+        exit(Name);
+    end;
+
+    procedure SetName(NewName: Text[250])
+    begin
+        Name := NewName;
     end;
 
     procedure GetType(): Enum "FS Variable Type";
@@ -24,10 +45,20 @@ codeunit 81007 "FS Variable"
         exit(Type);
     end;
 
+    procedure GetLength(): Integer
+    begin
+        exit(Length);
+    end;
+
+    procedure GetObjectId(): Integer
+    begin
+        exit(ObjectId);
+    end;
+
     procedure Copy(var Variable: Codeunit "FS Variable")
     begin
         Clear(Variable);
-        Variable.Setup(Name, Type, Length);
+        Variable.Setup(Name, Type, Length, ObjectId);
 
         case Type of
             "FS Variable Type"::text:
@@ -40,6 +71,10 @@ codeunit 81007 "FS Variable"
                 Variable.SetValue(Integer);
             "FS Variable Type"::boolean:
                 Variable.SetValue(Boolean);
+            "FS Variable Type"::record:
+                Variable.SetValue(RecordRef);
+            else
+        // TODO
         end;
     end;
 
@@ -59,7 +94,19 @@ codeunit 81007 "FS Variable"
                 Value := Integer;
             "FS Variable Type"::boolean:
                 Value := Boolean;
+            "FS Variable Type"::record:
+                Value := RecordRef;
+            else
+                Clear(Value);
         end;
+    end;
+
+    procedure GetValue(): Variant
+    var
+        Value: Variant;
+    begin
+        GetValue(Value);
+        exit(value);
     end;
 
     procedure SetValue(Value: Variant)
@@ -79,6 +126,10 @@ codeunit 81007 "FS Variable"
                 Integer := Value;
             "FS Variable Type"::boolean:
                 Boolean := Value;
+            "FS Variable Type"::record:
+                RecordRef := Value;
+            else
+        // TODO
         end;
     end;
 
@@ -93,7 +144,7 @@ codeunit 81007 "FS Variable"
         Left.GetValue(LeftValue);
         Right.GetValue(RightValue);
 
-        Setup('', Left.GetType(), 0);
+        Setup('', Left.GetType(), 0, 0);
 
         case Type of
             Type::integer,
@@ -139,7 +190,7 @@ codeunit 81007 "FS Variable"
         Left.GetValue(LeftValue);
         Right.GetValue(RightValue);
 
-        Setup('', Left.GetType(), 0);
+        Setup('', Left.GetType(), 0, 0);
 
         LeftValueDecimal := LeftValue;
         RightValueDecimal := RightValue;
@@ -161,7 +212,7 @@ codeunit 81007 "FS Variable"
         Left.GetValue(LeftValue);
         Right.GetValue(RightValue);
 
-        Setup('', Left.GetType(), 0);
+        Setup('', Left.GetType(), 0, 0);
 
         LeftValueDecimal := LeftValue;
         RightValueDecimal := RightValue;
@@ -183,7 +234,7 @@ codeunit 81007 "FS Variable"
         Left.GetValue(LeftValue);
         Right.GetValue(RightValue);
 
-        Setup('', Left.GetType(), 0);
+        Setup('', Left.GetType(), 0, 0);
 
         LeftValueDecimal := LeftValue;
         RightValueDecimal := RightValue;

@@ -36,7 +36,22 @@ codeunit 81005 "FS Memory"
         i := VariableCount;
 
         VariableMapping.Add(Variable.Name.ToLower(), i);
-        Variables[i].Setup(Variable.Name, Variable.Type, Variable.Length);
+        Variables[i].Setup(Variable.Name, Variable.Type, Variable.Length, Variable."Object Id");
+    end;
+
+    procedure AddVariable(var Variable: Codeunit "FS Variable")
+    var
+        Value: Variant;
+        i: Integer;
+    begin
+        VariableCount += 1;
+        i := VariableCount;
+
+        if Variable.GetName() <> '' then
+            VariableMapping.Add(Variable.GetName().ToLower(), i);
+        Variables[i].Setup(Variable.GetName(), Variable.GetType(), Variable.GetLength(), Variable.GetObjectId());
+        Variable.GetValue(Value);
+        Variables[i].SetValue(Value);
     end;
 
     procedure Push
@@ -63,6 +78,11 @@ codeunit 81005 "FS Memory"
         // FIXME return value !
     end;
 
+    procedure GetVariableCount(): Integer
+    begin
+        exit(VariableCount);
+    end;
+
     procedure HasVariable(Name: Text): Boolean
     begin
         exit(VariableMapping.ContainsKey(Name.ToLower()));
@@ -81,13 +101,19 @@ codeunit 81005 "FS Memory"
     var
         Value: Variant;
     begin
+        NewValue.GetValue(Value);
+
+        SetVariable(Name, Value);
+    end;
+
+    procedure SetVariable(Name: Text; var Value: Variant)
+    begin
         if StackCount <> 0 then // global memory
             if Stack[StackCount].HasVariable(Name) then begin
-                Stack[StackCount].SetVariable(Name, NewValue);
+                Stack[StackCount].SetVariable(Name, Value);
                 exit;
             end;
 
-        NewValue.GetValue(Value);
         Variables[VariableMapping.Get(Name.ToLower())].SetValue(Value);
     end;
 

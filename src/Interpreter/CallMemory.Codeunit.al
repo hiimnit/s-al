@@ -29,7 +29,7 @@ codeunit 81006 "FS Call Memory"
         i := VariableCount;
 
         VariableMapping.Add(Variable."Entry No.", i);
-        Variables[i].Setup(Variable.Name, Variable.Type, Variable.Length);
+        Variables[i].Setup(Variable.Name, Variable.Type, Variable.Length, Variable."Object Id");
     end;
 
     local procedure AddParameter(var Parameter: Record "FS Variable" temporary)

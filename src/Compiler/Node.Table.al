@@ -65,6 +65,11 @@ table 81001 "FS Node"
             Caption = 'Variable Name';
             DataClassification = SystemMetadata;
         }
+        field(106; "Property Access"; Boolean)
+        {
+            Caption = 'Property Access';
+            DataClassification = SystemMetadata;
+        }
 
         field(200; "If Condition Node"; Integer)
         {

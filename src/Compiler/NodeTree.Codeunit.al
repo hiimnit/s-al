@@ -32,9 +32,13 @@ codeunit 81003 "FS Node Tree"
         GetFunction(OnRunFunctionNo(), OnRun);
     end;
 
-    procedure GetFunction(FunctionName: Text; var Function: Record "FS Function")
+    procedure GetFunction(FunctionName: Text; var Function: Record "FS Function"): Boolean
     begin
+        if not FunctionMapping.ContainsKey(FunctionName.ToLower()) then
+            exit(false);
+
         GetFunction(FunctionMapping.Get(FunctionName.ToLower()), Function);
+        exit(true);
     end;
 
     procedure GetFunction(FunctionNo: Integer; var Function: Record "FS Function")
@@ -138,14 +142,32 @@ codeunit 81003 "FS Node Tree"
     procedure InsertAssignment
     (
         ParentNode: Integer;
-        Name: Text[250]
-    ): Integer
+        VariableNode: Integer
+    ) Assignment: Integer
+    var
+        TempVariableNode: Record "FS Node" temporary;
+        NewParentNode: Integer;
     begin
         InitTempNode(ParentNode);
         TempNode.Type := Enum::"FS Node Type"::AssignmentStatement; // FIXME ?
-        TempNode."Variable Name" := Name;
 
-        exit(InsertTempNode());
+        Assignment := InsertTempNode();
+        NewParentNode := Assignment;
+
+        TempVariableNode.Copy(TempNode, true);
+        TempVariableNode.Reset();
+
+        TempVariableNode.Get(VariableNode);
+        repeat
+            TempVariableNode."Parent Entry No." := NewParentNode;
+            Order += 1;
+            TempVariableNode.Order := Order;
+            TempVariableNode.Indentation += 1;
+            TempVariableNode.Modify();
+
+            NewParentNode := TempVariableNode."Entry No.";
+            TempVariableNode.SetRange("Parent Entry No.", TempVariableNode."Entry No.");
+        until not TempVariableNode.FindFirst();
     end;
 
     procedure InsertOperation
@@ -216,12 +238,14 @@ codeunit 81003 "FS Node Tree"
     procedure InsertVariable
     (
         ParentNode: Integer;
-        Name: Text[100]
+        Name: Text[100];
+        PropertyAccess: Boolean
     ): Integer
     begin
         InitTempNode(ParentNode);
         TempNode.Type := Enum::"FS Node Type"::Variable;
         TempNode."Variable Name" := Name;
+        TempNode."Property Access" := PropertyAccess;
 
         exit(InsertTempNode());
     end;
@@ -313,7 +337,7 @@ codeunit 81003 "FS Node Tree"
         FunctionNo: Integer
     ): Integer
     begin
-        exit(InsertVariableDefinition(Scope, Name, Type, FunctionNo, 0));
+        exit(InsertVariableDefinition(Scope, Name, Type, FunctionNo, 0, 0));
     end;
 
     procedure InsertVariableDefinition
@@ -322,7 +346,8 @@ codeunit 81003 "FS Node Tree"
         Name: Text[250];
         Type: Enum "FS Variable Type";
         FunctionNo: Integer;
-        Length: Integer
+        Length: Integer;
+        ObjectId: Integer
     ): Integer
     begin
         CheckVariableDefinition(Scope, FunctionNo, Name);
@@ -333,6 +358,7 @@ codeunit 81003 "FS Node Tree"
         TempVariable.Type := Type;
         TempVariable."Function No." := FunctionNo;
         TempVariable.Length := Length;
+        TempVariable."Object Id" := ObjectId;
         TempVariable.Scope := Scope;
         TempVariable.Insert(true);
 
@@ -363,22 +389,104 @@ codeunit 81003 "FS Node Tree"
             Error(AlreadyDefinedErr, Name);
     end;
 
-    procedure ValidateVariable(Name: Text[250]) VariableType: Enum "FS Variable Type"
+    procedure ValidateVariable(VariableNode: Integer) VariableType: Enum "FS Variable Type"
     var
+        TempVariableNode: Record "FS Node" temporary;
         TempVariableCopy: Record "FS Variable" temporary;
     begin
+        TempVariableNode.Copy(TempNode, true);
+        TempVariableNode.Reset();
+        TempVariableNode.Get(VariableNode);
+
         TempVariableCopy.Copy(TempVariable, true);
 
-        TempVariableCopy.SetRange(Name, Name);
+        TempVariableCopy.SetRange(Name, TempVariableNode."Variable Name");
         TempVariableCopy.SetRange(Scope, TempVariableCopy.Scope::Local);
         TempVariableCopy.SetRange("Function No.", CurrentFunction);
         if not TempVariableCopy.FindFirst() then begin
             TempVariableCopy.SetRange(Scope, TempVariableCopy.Scope::Global);
             TempVariableCopy.SetRange("Function No.");
             if not TempVariableCopy.FindFirst() then
-                Error('Unknown variable %1.', Name);
+                Error('Unknown variable %1.', TempVariableNode."Variable Name");
         end;
 
         VariableType := TempVariableCopy.Type;
+
+        TempVariableNode.SetRange("Parent Entry No.", TempVariableNode."Entry No.");
+        if TempVariableNode.FindFirst() then
+            VariableType := ValidateProperty(TempVariableCopy, TempVariableNode."Variable Name");
+    end;
+
+    local procedure ValidateProperty
+    (
+        Variable: Record "FS Variable";
+        PropertyName: Text[250]
+    ) VariableType: Enum "FS Variable Type"
+    var
+        Field: Record Field;
+    begin
+        if Variable.Type <> Enum::"FS Variable Type"::record then
+            Error('Property Access is not supported for %1', VariableType);
+
+        ValidateField(Variable."Object Id", PropertyName, Field);
+
+        VariableType := FieldType2VariableType(Field.Type);
+
+        // TODO check that there are no more child nodes
+    end;
+
+    procedure ValidateField(TableId: Integer; FieldName: Text) FieldId: Integer
+    var
+        Field: Record Field;
+    begin
+        Field.SetRange(TableNo, TableId);
+        Field.SetRange(FieldName, FieldName);
+        Field.FindFirst();
+        FieldId := Field."No.";
+    end;
+
+    procedure ValidateField(TableId: Integer; FieldName: Text; var Field: Record Field)
+    begin
+        Field.SetRange(TableNo, TableId);
+        Field.SetRange(FieldName, FieldName);
+        Field.FindFirst();
+    end;
+
+    procedure FieldType2VariableType(FieldType: FieldType) VariableType: Enum "FS Variable Type"
+    begin
+        case FieldType of
+            FieldType::Text:
+                VariableType := Enum::"FS Variable Type"::text;
+            FieldType::Code:
+                VariableType := Enum::"FS Variable Type"::code;
+            FieldType::Boolean:
+                VariableType := Enum::"FS Variable Type"::boolean;
+            FieldType::Decimal:
+                VariableType := Enum::"FS Variable Type"::decimal;
+            FieldType::Integer:
+                VariableType := Enum::"FS Variable Type"::integer;
+            else
+                Error('Unsupported field type %1', FieldType);
+        end;
+    end;
+
+    procedure FieldType2VariableType(FieldType: Option) VariableType: Enum "FS Variable Type"
+    var
+        Field: Record Field;
+    begin
+        case FieldType of
+            Field.Type::Text:
+                VariableType := Enum::"FS Variable Type"::text;
+            Field.Type::Code:
+                VariableType := Enum::"FS Variable Type"::code;
+            Field.Type::Boolean:
+                VariableType := Enum::"FS Variable Type"::boolean;
+            Field.Type::Decimal:
+                VariableType := Enum::"FS Variable Type"::decimal;
+            Field.Type::Integer:
+                VariableType := Enum::"FS Variable Type"::integer;
+            else
+                Error('Unsupported field type %1', FieldType);
+        end;
     end;
 }

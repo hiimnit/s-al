@@ -28,4 +28,8 @@ enum 81004 "FS Variable Type"
     {
         Caption = 'boolean';
     }
+    value(6; record)
+    {
+        Caption = 'record';
+    }
 }

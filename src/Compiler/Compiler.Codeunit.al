@@ -151,7 +151,7 @@ codeunit 81002 "FS Compiler"
         Name: Text[250];
         Type: Enum "FS Variable Type";
         Length: Integer;
-        i: Integer;
+        i, TableId : Integer;
     begin
         Lexer.GetNextLexeme(Lexeme);
         AssertLexeme(Lexeme, "FS Lexeme Type"::Symbol);
@@ -181,6 +181,13 @@ codeunit 81002 "FS Compiler"
 
                     AssertNextLexeme("FS Operator"::"]");
                 end;
+            Type = "FS Variable Type"::record:
+                begin
+                    Lexer.GetNextLexeme(Lexeme);
+                    AssertLexeme(Lexeme, Enum::"FS Lexeme Type"::Symbol);
+
+                    TableId := ValidateTable(Lexeme.Name);
+                end;
         end;
 
         VariableNo := NodeTree.InsertVariableDefinition(
@@ -188,7 +195,18 @@ codeunit 81002 "FS Compiler"
             Name,
             Type,
             FunctionNo,
-            Length);
+            Length,
+            TableId);
+    end;
+
+    local procedure ValidateTable(TableName: Text) TableId: Integer
+    var
+        AllObj: Record AllObj;
+    begin
+        AllObj.SetRange("Object Type", AllObj."Object Type"::Table);
+        AllObj.SetRange("Object Name", TableName);
+        AllObj.FindFirst();
+        TableId := AllObj."Object ID";
     end;
 
     local procedure CompileCompoundStatement(ParentNode: Integer) CompoundStatement: Integer
@@ -285,25 +303,16 @@ codeunit 81002 "FS Compiler"
         Lexeme: Record "FS Lexeme";
     begin
         Lexer.GetNextLexeme(Lexeme);
+        Statement := CompileSymbol(CompoundStatement, Enum::"FS Variable Type"::void, Lexeme);
 
-        case true of
-            PeekNextLexeme(Enum::"FS Operator"::":="):
-                // TODO
-                Statement := CompileAssignmentStatement(CompoundStatement, Lexeme);
-            PeekNextLexeme(Enum::"FS Operator"::"("):
-                Statement := CompileFunctionCall(CompoundStatement, Lexeme);
-            else
-                Error('TODO');
-        end;
+        if PeekNextLexeme(Enum::"FS Operator"::":=") then
+            Statement := CompileAssignmentStatement(CompoundStatement, Statement);
     end;
 
-    local procedure CompileAssignmentStatement(CompoundStatement: Integer; Lexeme: Record "FS Lexeme") Assignment: Integer;
+    local procedure CompileAssignmentStatement(CompoundStatement: Integer; Variable: Integer) Assignment: Integer;
     var
-        Variable: Text[250];
         VariableType: Enum "FS Variable Type";
     begin
-        Variable := Lexeme.Name;
-
         VariableType := NodeTree.ValidateVariable(Variable);
 
         AssertNextLexeme("FS Operator"::":=");
@@ -321,8 +330,16 @@ codeunit 81002 "FS Compiler"
             "FS Variable Type"::text,
             "FS Variable Type"::code:
                 Expression := CompileStringExpression(ParentNode);
-            else
+            "FS Variable Type"::integer,
+            "FS Variable Type"::decimal:
                 Expression := CompileNumericExpression(ParentNode);
+            else
+                // FIXME this needs a rework
+                // try to guess the type?
+                if PeekNextLexeme(Enum::"FS Lexeme Type"::StringLiteral) then
+                    Expression := CompileStringExpression(ParentNode)
+                else
+                    Expression := CompileNumericExpression(ParentNode);
         end;
     end;
 
@@ -453,6 +470,11 @@ codeunit 81002 "FS Compiler"
         Lexeme: Record "FS Lexeme";
     begin
         Lexer.GetNextLexeme(Lexeme);
+        Symbol := CompileSymbol(ParentNode, ExpectedType, Lexeme);
+    end;
+
+    local procedure CompileSymbol(ParentNode: Integer; ExpectedType: Enum "FS Variable Type"; Lexeme: Record "FS Lexeme") Symbol: Integer
+    begin
         // TODO type check ! - ExpectedType
         // TODO type check ! - ExpectedType
         // FIXME type check ! - ExpectedType
@@ -460,14 +482,18 @@ codeunit 81002 "FS Compiler"
 
         case true of
             PeekNextLexeme("FS Operator"::"."):
-                ; // Record/codeunit method/field ?
-            PeekNextLexeme("FS Operator"::"("):
                 begin
-                    ; // TODO can also be written without parentheses?
-                    Symbol := CompileFunctionCall(ParentNode, Lexeme); // TODO pass in ExpectedType ?
+                    // property/method
+                    Symbol := NodeTree.InsertVariable(ParentNode, Lexeme.Name, true);
+                    AssertNextLexeme("FS Operator"::".");
+                    NodeTree.Indent();
+                    CompileSymbol(Symbol, ExpectedType);
+                    NodeTree.UnIndent();
                 end;
+            PeekNextLexeme("FS Operator"::"("):
+                Symbol := CompileFunctionCall(ParentNode, Lexeme); // TODO pass in ExpectedType ?
             else
-                Symbol := NodeTree.InsertVariable(ParentNode, Lexeme.Name);
+                Symbol := NodeTree.InsertVariable(ParentNode, Lexeme.Name, false);
         end;
     end;
 
@@ -478,7 +504,7 @@ codeunit 81002 "FS Compiler"
 
         AssertNextLexeme(Enum::"FS Operator"::"(");
         while not PeekNextLexeme(Enum::"FS Operator"::")") do begin
-            CompileExpression(FunctionCall, Enum::"FS Variable Type"::decimal); // TODO type!
+            CompileExpression(FunctionCall, Enum::"FS Variable Type"::void); // FIXME type!
             if PeekNextLexeme(Enum::"FS Operator"::"comma") then
                 AssertNextLexeme(Enum::"FS Operator"::"comma");
         end;

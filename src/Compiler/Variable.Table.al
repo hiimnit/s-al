@@ -32,6 +32,11 @@ table 81002 "FS Variable"
             Caption = 'Reference';
             DataClassification = SystemMetadata;
         }
+        field(6; "Object Id"; Integer)
+        {
+            Caption = 'Object Id';
+            DataClassification = SystemMetadata;
+        }
         field(10; Scope; Enum "FS Variable Scope")
         {
             Caption = 'Scope';
